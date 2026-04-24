@@ -7,6 +7,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -16,11 +18,23 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 public class CollegeDashboardFrame extends JFrame {
 
@@ -29,6 +43,16 @@ public class CollegeDashboardFrame extends JFrame {
     private final JTextField studentIdField = new JTextField();
     private final JTextField courseIdField = new JTextField();
     private final JTextArea outputArea = new JTextArea();
+    private final JTextField filterField = new JTextField(22);
+    private final JComboBox<String> pageSizeBox = new JComboBox<>(new String[]{"5", "10", "20", "50"});
+    private final JLabel pageInfoLabel = new JLabel("第 1 / 1 页");
+    private final JButton prevPageButton = new JButton("上一页");
+    private final JButton nextPageButton = new JButton("下一页");
+    private final JButton exportButton = new JButton("导出当前筛选");
+    private final List<Object[]> allRows = new ArrayList<>();
+    private final List<Object[]> filteredRows = new ArrayList<>();
+    private int currentPage = 1;
+    private int pageSize = 10;
     private final DefaultTableModel courseTableModel = new DefaultTableModel(new String[]{"课程号", "课程名", "学分", "教师", "地点", "学院", "共享"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -76,6 +100,63 @@ public class CollegeDashboardFrame extends JFrame {
         buttonPanel.add(dropButton);
         buttonPanel.add(statsButton);
 
+        JPanel tableControlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        tableControlPanel.add(new JLabel("筛选："));
+        tableControlPanel.add(filterField);
+        tableControlPanel.add(new JLabel("每页："));
+        tableControlPanel.add(pageSizeBox);
+        tableControlPanel.add(prevPageButton);
+        tableControlPanel.add(nextPageButton);
+        tableControlPanel.add(pageInfoLabel);
+        tableControlPanel.add(exportButton);
+
+        pageSizeBox.setSelectedItem("10");
+        prevPageButton.setEnabled(false);
+        nextPageButton.setEnabled(false);
+
+        filterField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                applyFilterAndRefresh();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                applyFilterAndRefresh();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                applyFilterAndRefresh();
+            }
+        });
+
+        pageSizeBox.addActionListener(e -> {
+            Object selected = pageSizeBox.getSelectedItem();
+            if (selected != null) {
+                pageSize = Integer.parseInt(String.valueOf(selected));
+                currentPage = 1;
+                refreshTablePage();
+            }
+        });
+
+        prevPageButton.addActionListener(e -> {
+            if (currentPage > 1) {
+                currentPage--;
+                refreshTablePage();
+            }
+        });
+
+        nextPageButton.addActionListener(e -> {
+            int totalPages = computeTotalPages();
+            if (currentPage < totalPages) {
+                currentPage++;
+                refreshTablePage();
+            }
+        });
+
+        exportButton.addActionListener(e -> exportFilteredRows());
+
         outputArea.setEditable(false);
         outputArea.setLineWrap(true);
         outputArea.setWrapStyleWord(true);
@@ -95,7 +176,10 @@ public class CollegeDashboardFrame extends JFrame {
         });
 
         JPanel centerPanel = new JPanel(new BorderLayout(8, 8));
-        centerPanel.add(buttonPanel, BorderLayout.NORTH);
+        JPanel northControl = new JPanel(new BorderLayout(8, 8));
+        northControl.add(buttonPanel, BorderLayout.NORTH);
+        northControl.add(tableControlPanel, BorderLayout.SOUTH);
+        centerPanel.add(northControl, BorderLayout.NORTH);
 
         JPanel dataPanel = new JPanel(new GridLayout(2, 1, 8, 8));
         dataPanel.add(new JScrollPane(courseTable));
@@ -208,7 +292,7 @@ public class CollegeDashboardFrame extends JFrame {
     }
 
     private void renderSimpleResult(String responseXml, String title) {
-        clearCourseTable();
+        resetRowCache();
         Document document = XmlUtil.parse(responseXml);
         Element root = document.getDocumentElement();
         String success = XmlUtil.childText(root, "success");
@@ -227,7 +311,7 @@ public class CollegeDashboardFrame extends JFrame {
         String success = XmlUtil.childText(root, "success");
         String message = XmlUtil.childText(root, "message");
         NodeList courses = root.getElementsByTagName("course");
-        clearCourseTable();
+        resetRowCache();
 
         StringBuilder builder = new StringBuilder();
         builder.append("=== ").append(title).append(" ===\n")
@@ -245,7 +329,7 @@ public class CollegeDashboardFrame extends JFrame {
             String location = textOf(course, "location");
             String college = textOf(course, "college");
             String shared = textOf(course, "shared");
-            courseTableModel.addRow(new Object[]{id, name, credit, teacher, location, college, shared});
+            allRows.add(new Object[]{id, name, credit, teacher, location, college, shared});
 
             builder.append(i + 1).append(". ")
                     .append(id)
@@ -264,10 +348,11 @@ public class CollegeDashboardFrame extends JFrame {
 
         outputArea.setText(builder.toString());
         outputArea.setCaretPosition(0);
+        applyFilterAndRefresh();
     }
 
     private void renderStatistics(String responseXml) {
-        clearCourseTable();
+        resetRowCache();
         Document document = XmlUtil.parse(responseXml);
         Element root = document.getDocumentElement();
         String success = XmlUtil.childText(root, "success");
@@ -294,7 +379,7 @@ public class CollegeDashboardFrame extends JFrame {
                 String name = textOf(course, "name");
                 String college = textOf(course, "college");
                 String selectedCount = textOf(course, "selectedCount");
-                courseTableModel.addRow(new Object[]{id, name, "", "", "", college, "TOP " + selectedCount});
+                allRows.add(new Object[]{id, name, "", "", "", college, "TOP " + selectedCount});
 
                 builder.append(i + 1).append(". ")
                         .append(id).append(" | ")
@@ -306,6 +391,7 @@ public class CollegeDashboardFrame extends JFrame {
 
         outputArea.setText(builder.toString());
         outputArea.setCaretPosition(0);
+        applyFilterAndRefresh();
     }
 
     private boolean isSuccessResponse(String responseXml) {
@@ -315,6 +401,98 @@ public class CollegeDashboardFrame extends JFrame {
 
     private void clearCourseTable() {
         courseTableModel.setRowCount(0);
+    }
+
+    private void resetRowCache() {
+        allRows.clear();
+        filteredRows.clear();
+        clearCourseTable();
+        currentPage = 1;
+    }
+
+    private void applyFilterAndRefresh() {
+        filteredRows.clear();
+        String keyword = filterField.getText() == null ? "" : filterField.getText().trim().toLowerCase(Locale.ENGLISH);
+        for (Object[] row : allRows) {
+            if (keyword.isEmpty() || rowMatchKeyword(row, keyword)) {
+                filteredRows.add(row);
+            }
+        }
+        currentPage = 1;
+        refreshTablePage();
+    }
+
+    private boolean rowMatchKeyword(Object[] row, String keyword) {
+        for (Object cell : row) {
+            if (cell != null && String.valueOf(cell).toLowerCase(Locale.ENGLISH).contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void refreshTablePage() {
+        clearCourseTable();
+        int total = filteredRows.size();
+        int totalPages = computeTotalPages();
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        int start = (currentPage - 1) * pageSize;
+        int end = Math.min(start + pageSize, total);
+        for (int i = start; i < end; i++) {
+            courseTableModel.addRow(filteredRows.get(i));
+        }
+        pageInfoLabel.setText("第 " + currentPage + " / " + totalPages + " 页（共 " + total + " 条）");
+        prevPageButton.setEnabled(currentPage > 1);
+        nextPageButton.setEnabled(currentPage < totalPages);
+    }
+
+    private int computeTotalPages() {
+        if (pageSize <= 0) {
+            return 1;
+        }
+        return Math.max(1, (filteredRows.size() + pageSize - 1) / pageSize);
+    }
+
+    private void exportFilteredRows() {
+        if (filteredRows.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "当前无可导出的行，请先查询或调整筛选条件。", "导出提示", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("导出CSV");
+        String timeTag = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ENGLISH).format(new Date());
+        chooser.setSelectedFile(new File("courses-" + collegeCode + "-" + timeTag + ".csv"));
+        int option = chooser.showSaveDialog(this);
+        if (option != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File file = chooser.getSelectedFile();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write("id,name,credit,teacher,location,college,shared");
+            writer.newLine();
+            for (Object[] row : filteredRows) {
+                writer.write(csvCell(row[0]) + ","
+                        + csvCell(row[1]) + ","
+                        + csvCell(row[2]) + ","
+                        + csvCell(row[3]) + ","
+                        + csvCell(row[4]) + ","
+                        + csvCell(row[5]) + ","
+                        + csvCell(row[6]));
+                writer.newLine();
+            }
+            JOptionPane.showMessageDialog(this, "导出成功：" + file.getAbsolutePath(), "导出完成", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "导出失败：" + ex.getMessage(), "导出失败", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private String csvCell(Object value) {
+        String text = value == null ? "" : String.valueOf(value);
+        String escaped = text.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
     }
 
     private String textOf(Element parent, String tagName) {
