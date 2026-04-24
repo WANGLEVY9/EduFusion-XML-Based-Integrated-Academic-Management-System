@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="request">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="type" type="RequestType"/>
+                <xs:element name="source" type="xs:string" minOccurs="0"/>
+                <xs:element name="studentId" type="xs:string" minOccurs="0"/>
+                <xs:element name="courseId" type="xs:string" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:simpleType name="RequestType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="shareCourse"/>
+            <xs:enumeration value="crossSelect"/>
+            <xs:enumeration value="dropCourse"/>
+            <xs:enumeration value="statistics"/>
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>

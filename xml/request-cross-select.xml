@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<request>
+    <type>crossSelect</type>
+    <source>A</source>
+    <studentId>A001</studentId>
+    <courseId>BC02</courseId>
+</request>
