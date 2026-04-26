@@ -45,4 +45,16 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>edu.fusion.integration.IntegrationServerBootstrap</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

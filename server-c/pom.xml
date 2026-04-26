@@ -22,7 +22,18 @@
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
-            <version>8.4.0</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>edu.fusion.serverc.CollegeCServerBootstrap</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

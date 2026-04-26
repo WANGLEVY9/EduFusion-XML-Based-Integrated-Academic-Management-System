@@ -4,7 +4,9 @@
       "Bash(dir *)",
       "Bash(mvn clean *)",
       "Bash(mvn test *)",
-      "Bash(mvn install *)"
+      "Bash(mvn install *)",
+      "WebSearch",
+      "Bash(mvn compile *)"
     ]
   }
 }

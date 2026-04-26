@@ -19,6 +19,9 @@
         <maven.surefire.version>3.2.5</maven.surefire.version>
         <dom4j.version>2.1.4</dom4j.version>
         <xerces.version>2.12.2</xerces.version>
+        <mysql.driver.version>8.4.0</mysql.driver.version>
+        <sqlserver.driver.version>12.6.1.jre8</sqlserver.driver.version>
+        <oracle.driver.version>21.9.0.0</oracle.driver.version>
     </properties>
 
     <dependencyManagement>
@@ -51,6 +54,21 @@
                 <artifactId>xercesImpl</artifactId>
                 <version>${xerces.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
+                <version>${mysql.driver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.microsoft.sqlserver</groupId>
+                <artifactId>mssql-jdbc</artifactId>
+                <version>${sqlserver.driver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.oracle.database.jdbc</groupId>
+                <artifactId>ojdbc8</artifactId>
+                <version>${oracle.driver.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -64,6 +82,11 @@
                     <configuration>
                         <useModulePath>false</useModulePath>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.6.3</version>
                 </plugin>
             </plugins>
         </pluginManagement>

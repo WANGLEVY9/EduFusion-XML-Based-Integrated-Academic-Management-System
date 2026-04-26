@@ -22,7 +22,18 @@
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
-            <version>12.6.1.jre8</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>edu.fusion.servera.CollegeAServerBootstrap</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
