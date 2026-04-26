@@ -2,12 +2,13 @@ package edu.fusion.integration.http;
 
 import edu.fusion.common.model.Result;
 import edu.fusion.common.service.CollegeGateway;
-import edu.fusion.common.util.XmlUtil;
+import edu.fusion.common.util.Dom4jXmlService;
 import edu.fusion.integration.service.IntegrationServer;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import org.w3c.dom.Document;
+import org.dom4j.Document;
+import org.dom4j.Element;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,13 +55,14 @@ public class IntegrationXmlHttpServer {
             String requestXml = readBody(exchange.getRequestBody());
             Result<Document> result = integrationServer.processRequestXml(requestXml);
             if (!result.isSuccess() || result.getData() == null) {
-                Document response = XmlUtil.createDocument("response");
-                response.getDocumentElement().appendChild(createTextElement(response, "success", "false"));
-                response.getDocumentElement().appendChild(createTextElement(response, "message", result.getMessage()));
-                writeXml(exchange, 200, XmlUtil.toString(response));
+                Document response = Dom4jXmlService.createDocument("response");
+                Element root = response.getRootElement();
+                root.addElement("success").addText("false");
+                root.addElement("message").addText(result.getMessage());
+                writeXml(exchange, 200, Dom4jXmlService.toCompactString(response));
                 return;
             }
-            writeXml(exchange, 200, XmlUtil.toString(result.getData()));
+            writeXml(exchange, 200, Dom4jXmlService.toCompactString(result.getData()));
         }
     }
 
@@ -104,11 +106,5 @@ public class IntegrationXmlHttpServer {
         } finally {
             outputStream.close();
         }
-    }
-
-    private org.w3c.dom.Element createTextElement(Document document, String name, String value) {
-        org.w3c.dom.Element element = document.createElement(name);
-        element.setTextContent(value);
-        return element;
     }
 }

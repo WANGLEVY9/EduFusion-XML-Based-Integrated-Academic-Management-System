@@ -5,9 +5,9 @@ import edu.fusion.common.model.CourseHeat;
 import edu.fusion.common.model.GlobalStatistics;
 import edu.fusion.common.model.Result;
 import edu.fusion.common.service.CollegeGateway;
-import edu.fusion.common.util.XmlUtil;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import edu.fusion.common.util.Dom4jXmlService;
+import org.dom4j.Document;
+import org.dom4j.Element;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -107,22 +107,43 @@ public class IntegrationServer {
         return Result.ok(gateway.listStudentCourses(studentId), "Student courses fetched");
     }
 
+    @Deprecated
     public Result<Document> processRequestXml(Path requestXml, Path requestXsd) {
-        if (!XmlUtil.validateAgainstXsd(requestXml, requestXsd)) {
+        if (!Dom4jXmlService.validateAgainstXsd(requestXml, requestXsd)) {
             return Result.fail("Request XML failed XSD validation");
         }
-
-        Document req = XmlUtil.parse(requestXml);
+        Document req = Dom4jXmlService.parse(requestXml);
         return processRequestXml(req);
     }
 
     public Result<Document> processRequestXml(String requestXml) {
-        return processRequestXml(XmlUtil.parse(requestXml));
+        Path xsdPath = resolveXsdPath();
+        if (xsdPath != null && !Dom4jXmlService.validateAgainstXsd(requestXml, xsdPath)) {
+            return Result.fail("Request XML failed XSD validation");
+        }
+        return processRequestXml(Dom4jXmlService.parse(requestXml));
+    }
+
+    private Path resolveXsdPath() {
+        Path fsPath = Path.of("xsd", "request.xsd");
+        if (fsPath.toFile().exists()) {
+            return fsPath;
+        }
+        java.net.URL resource = getClass().getClassLoader().getResource("xsd/request.xsd");
+        if (resource != null && "file".equals(resource.getProtocol())) {
+            try {
+                return Path.of(resource.toURI());
+            } catch (java.net.URISyntaxException e) {
+                System.out.println("Warning: invalid XSD resource URI: " + resource);
+            }
+        }
+        System.out.println("Warning: request.xsd not found, skipping XSD validation");
+        return null;
     }
 
     public Result<Document> processRequestXml(Document req) {
-        Element root = req.getDocumentElement();
-        String type = XmlUtil.childText(root, "type");
+        Element root = req.getRootElement();
+        String type = Dom4jXmlService.childText(root, "type");
 
         switch (type) {
             case "shareCourse":
@@ -143,98 +164,94 @@ public class IntegrationServer {
     }
 
     private Result<Document> processShare(Element root) {
-        String source = XmlUtil.childText(root, "source");
+        String source = Dom4jXmlService.childText(root, "source");
         Result<List<Course>> shared = shareCourses(source);
         return buildCourseListDocument(shared, "shareCourse done");
     }
 
     private Result<Document> processQueryCourses(Element root) {
-        String college = XmlUtil.childText(root, "college");
+        String college = Dom4jXmlService.childText(root, "college");
         Result<List<Course>> result = queryCourses(college);
         return buildCourseListDocument(result, "queryCourses done");
     }
 
     private Result<Document> processMyCourses(Element root) {
-        String college = XmlUtil.childText(root, "college");
-        String studentId = XmlUtil.childText(root, "studentId");
+        String college = Dom4jXmlService.childText(root, "college");
+        String studentId = Dom4jXmlService.childText(root, "studentId");
         Result<List<Course>> result = myCourses(college, studentId);
         return buildCourseListDocument(result, "myCourses done");
     }
 
     private Result<Document> processSelect(Element root) {
-        String studentId = XmlUtil.childText(root, "studentId");
-        String courseId = XmlUtil.childText(root, "courseId");
+        String studentId = Dom4jXmlService.childText(root, "studentId");
+        String courseId = Dom4jXmlService.childText(root, "courseId");
         Result<Boolean> result = crossSelect(studentId, courseId);
 
-        Document response = XmlUtil.createDocument("response");
-        Element responseRoot = response.getDocumentElement();
-        responseRoot.appendChild(buildTextElement(response, "success", String.valueOf(result.isSuccess())));
-        responseRoot.appendChild(buildTextElement(response, "message", result.getMessage()));
+        Document response = Dom4jXmlService.createDocument("response");
+        Element responseRoot = response.getRootElement();
+        Dom4jXmlService.addTextElement(responseRoot, "success", String.valueOf(result.isSuccess()));
+        Dom4jXmlService.addTextElement(responseRoot, "message", result.getMessage());
         return Result.ok(response, "crossSelect done");
     }
 
     private Result<Document> processDrop(Element root) {
-        String studentId = XmlUtil.childText(root, "studentId");
-        String courseId = XmlUtil.childText(root, "courseId");
+        String studentId = Dom4jXmlService.childText(root, "studentId");
+        String courseId = Dom4jXmlService.childText(root, "courseId");
         Result<Boolean> result = dropCourse(studentId, courseId);
 
-        Document response = XmlUtil.createDocument("response");
-        Element responseRoot = response.getDocumentElement();
-        responseRoot.appendChild(buildTextElement(response, "success", String.valueOf(result.isSuccess())));
-        responseRoot.appendChild(buildTextElement(response, "message", result.getMessage()));
+        Document response = Dom4jXmlService.createDocument("response");
+        Element responseRoot = response.getRootElement();
+        Dom4jXmlService.addTextElement(responseRoot, "success", String.valueOf(result.isSuccess()));
+        Dom4jXmlService.addTextElement(responseRoot, "message", result.getMessage());
         return Result.ok(response, "dropCourse done");
     }
 
     private Result<Document> processStats() {
         Result<GlobalStatistics> result = statistics();
-        Document response = XmlUtil.createDocument("response");
-        Element responseRoot = response.getDocumentElement();
-        responseRoot.appendChild(buildTextElement(response, "success", String.valueOf(result.isSuccess())));
-        responseRoot.appendChild(buildTextElement(response, "message", result.getMessage()));
+        Document response = Dom4jXmlService.createDocument("response");
+        Element responseRoot = response.getRootElement();
+        Dom4jXmlService.addTextElement(responseRoot, "success", String.valueOf(result.isSuccess()));
+        Dom4jXmlService.addTextElement(responseRoot, "message", result.getMessage());
 
         if (result.getData() != null) {
             GlobalStatistics stats = result.getData();
-            Element statsElement = response.createElement("statistics");
-            statsElement.appendChild(buildTextElement(response, "totalStudents", String.valueOf(stats.getTotalStudents())));
-            statsElement.appendChild(buildTextElement(response, "totalCourses", String.valueOf(stats.getTotalCourses())));
-            statsElement.appendChild(buildTextElement(response, "totalSelections", String.valueOf(stats.getTotalSelections())));
-            statsElement.appendChild(buildTextElement(response, "totalSharedCourses", String.valueOf(stats.getTotalSharedCourses())));
 
-            Element topCourses = response.createElement("topCourses");
+            Element statsElement = responseRoot.addElement("statistics");
+            Dom4jXmlService.addTextElement(statsElement, "totalStudents", String.valueOf(stats.getTotalStudents()));
+            Dom4jXmlService.addTextElement(statsElement, "totalCourses", String.valueOf(stats.getTotalCourses()));
+            Dom4jXmlService.addTextElement(statsElement, "totalSelections", String.valueOf(stats.getTotalSelections()));
+            Dom4jXmlService.addTextElement(statsElement, "totalSharedCourses", String.valueOf(stats.getTotalSharedCourses()));
+
+            Element topCourses = statsElement.addElement("topCourses");
             for (CourseHeat heat : stats.getTopCourses()) {
-                Element c = response.createElement("course");
-                c.appendChild(buildTextElement(response, "id", heat.getCourseId()));
-                c.appendChild(buildTextElement(response, "name", heat.getCourseName()));
-                c.appendChild(buildTextElement(response, "college", heat.getCollege()));
-                c.appendChild(buildTextElement(response, "selectedCount", String.valueOf(heat.getSelectedCount())));
-                topCourses.appendChild(c);
+                Element c = topCourses.addElement("course");
+                Dom4jXmlService.addTextElement(c, "id", heat.getCourseId());
+                Dom4jXmlService.addTextElement(c, "name", heat.getCourseName());
+                Dom4jXmlService.addTextElement(c, "college", heat.getCollege());
+                Dom4jXmlService.addTextElement(c, "selectedCount", String.valueOf(heat.getSelectedCount()));
             }
-            statsElement.appendChild(topCourses);
-            responseRoot.appendChild(statsElement);
         }
 
         return Result.ok(response, "statistics done");
     }
 
     private Result<Document> buildCourseListDocument(Result<List<Course>> result, String successMessage) {
-        Document response = XmlUtil.createDocument("response");
-        Element responseRoot = response.getDocumentElement();
-        responseRoot.appendChild(buildTextElement(response, "success", String.valueOf(result.isSuccess())));
-        responseRoot.appendChild(buildTextElement(response, "message", result.getMessage()));
+        Document response = Dom4jXmlService.createDocument("response");
+        Element responseRoot = response.getRootElement();
+        Dom4jXmlService.addTextElement(responseRoot, "success", String.valueOf(result.isSuccess()));
+        Dom4jXmlService.addTextElement(responseRoot, "message", result.getMessage());
 
-        Element coursesElement = response.createElement("courses");
-        responseRoot.appendChild(coursesElement);
+        Element coursesElement = responseRoot.addElement("courses");
         if (result.getData() != null) {
             for (Course c : result.getData()) {
-                Element courseElement = response.createElement("course");
-                courseElement.appendChild(buildTextElement(response, "id", c.getId()));
-                courseElement.appendChild(buildTextElement(response, "name", c.getName()));
-                courseElement.appendChild(buildTextElement(response, "credit", String.valueOf(c.getCredit())));
-                courseElement.appendChild(buildTextElement(response, "teacher", c.getTeacher()));
-                courseElement.appendChild(buildTextElement(response, "location", c.getLocation()));
-                courseElement.appendChild(buildTextElement(response, "college", c.getCollege()));
-                courseElement.appendChild(buildTextElement(response, "shared", String.valueOf(c.isShared())));
-                coursesElement.appendChild(courseElement);
+                Element courseElement = coursesElement.addElement("course");
+                Dom4jXmlService.addTextElement(courseElement, "id", c.getId());
+                Dom4jXmlService.addTextElement(courseElement, "name", c.getName());
+                Dom4jXmlService.addTextElement(courseElement, "credit", String.valueOf(c.getCredit()));
+                Dom4jXmlService.addTextElement(courseElement, "teacher", c.getTeacher());
+                Dom4jXmlService.addTextElement(courseElement, "location", c.getLocation());
+                Dom4jXmlService.addTextElement(courseElement, "college", c.getCollege());
+                Dom4jXmlService.addTextElement(courseElement, "shared", String.valueOf(c.isShared()));
             }
         }
         return Result.ok(response, successMessage);
@@ -249,11 +266,5 @@ public class IntegrationServer {
 
     private String normalizeCollegeCode(String collegeCode) {
         return collegeCode == null ? "" : collegeCode.trim().toUpperCase();
-    }
-
-    private Element buildTextElement(Document doc, String name, String value) {
-        Element element = doc.createElement(name);
-        element.setTextContent(value == null ? "" : value);
-        return element;
     }
 }

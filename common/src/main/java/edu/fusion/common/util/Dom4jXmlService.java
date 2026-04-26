@@ -35,23 +35,15 @@ public final class Dom4jXmlService {
         prettyFormat.setEncoding("UTF-8");
         prettyFormat.setIndent(true);
         prettyFormat.setIndentSize(2);
-        try {
-            reader.setFeature("http://apache.org/xml/features/validation/schema", true);
-            reader.setFeature("http://apache.org/xml/features/validation/schema-full-checking", true);
-        } catch (SAXException e) {
-            throw new IllegalStateException("Failed to configure SAXReader features", e);
-        }
     }
 
     private Dom4jXmlService() {
     }
 
     public static Document createDocument(String rootName) {
-        return DocumentHelper.createDocument();
-    }
-
-    public static Element addRootElement(Document document, String rootName) {
-        return document.addElement(rootName);
+        Document document = DocumentHelper.createDocument();
+        document.addElement(rootName);
+        return document;
     }
 
     public static Document parse(String xmlContent) {

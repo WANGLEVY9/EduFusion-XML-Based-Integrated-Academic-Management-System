@@ -80,6 +80,25 @@ class IntegrationServerTest {
         assertEquals(3, result.getData().getTotalSharedCourses());
     }
 
+    @Test
+    void processRequestXmlShouldValidateAndRoute() {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                + "<request><type>queryCourses</type><college>A</college></request>";
+        Result<org.dom4j.Document> result = server.processRequestXml(xml);
+        assertTrue(result.isSuccess());
+        String responseXml = edu.fusion.common.util.Dom4jXmlService.toCompactString(result.getData());
+        assertTrue(responseXml.contains("<success>true</success>"));
+        assertTrue(responseXml.contains("<course>"));
+    }
+
+    @Test
+    void processRequestXmlShouldFailForUnknownType() {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                + "<request><type>unknownType</type></request>";
+        Result<org.dom4j.Document> result = server.processRequestXml(xml);
+        assertFalse(result.isSuccess());
+    }
+
     private static final class GatewayStub implements CollegeGateway {
 
         private final String collegeCode;
