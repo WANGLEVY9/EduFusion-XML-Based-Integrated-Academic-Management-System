@@ -3,6 +3,7 @@ package edu.fusion.common.util;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,7 +19,7 @@ final class LogSupport {
         logger.setUseParentHandlers(false);
         if (logger.getHandlers().length == 0) {
             try {
-                Path logDir = Path.of("logs");
+                Path logDir = Paths.get("logs");
                 Files.createDirectories(logDir);
                 FileHandler handler = new FileHandler(logDir.resolve(fileName).toString(), true);
                 handler.setFormatter(new SimpleFormatter());
