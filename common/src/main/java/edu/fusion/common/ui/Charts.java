@@ -14,14 +14,17 @@ import edu.fusion.common.model.CourseHeat;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.util.Arrays;
 import java.util.List;
 
 public final class Charts {
 
-    private static final Color COLOR_A = new Color(0x4A, 0x90, 0xD9);
-    private static final Color COLOR_B = new Color(0x50, 0xC8, 0x78);
-    private static final Color COLOR_C = new Color(0xFF, 0x8C, 0x42);
+    private static final Color BLUE = new Color(0x4A, 0x90, 0xD9);
+    private static final Color GREEN = new Color(0x50, 0xC8, 0x78);
+    private static final Color ORANGE = new Color(0xFF, 0x8C, 0x42);
     private static final Color BG_COLOR = new Color(0xF0, 0xF2, 0xF5);
+    private static final List<Color> COLLEGE_COLORS = Arrays.asList(BLUE, GREEN, ORANGE);
+    private static final Font LABEL_FONT = new Font("SansSerif", Font.PLAIN, 12);
 
     private Charts() {
     }
@@ -43,18 +46,7 @@ public final class Charts {
                 dataset, PlotOrientation.VERTICAL,
                 true, true, false);
 
-        CategoryPlot plot = (CategoryPlot) chart.getPlot();
-        plot.setBackgroundPaint(BG_COLOR);
-        plot.setDomainGridlinePaint(Color.WHITE);
-        plot.setRangeGridlinePaint(Color.WHITE);
-
-        BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setBarPainter(new StandardBarPainter());
-        renderer.setSeriesPaint(0, COLOR_A);
-        renderer.setSeriesPaint(1, COLOR_B);
-        renderer.setSeriesPaint(2, COLOR_C);
-        renderer.setDrawBarOutline(false);
-
+        styleBarPlot((CategoryPlot) chart.getPlot(), BLUE, GREEN, ORANGE);
         return chart;
     }
 
@@ -73,10 +65,10 @@ public final class Charts {
 
         PiePlot plot = (PiePlot) chart.getPlot();
         plot.setBackgroundPaint(BG_COLOR);
-        plot.setSectionPaint(collegeNames[0], COLOR_A);
-        plot.setSectionPaint(collegeNames[1], COLOR_B);
-        plot.setSectionPaint(collegeNames[2], COLOR_C);
-        plot.setLabelFont(new Font("SansSerif", Font.PLAIN, 12));
+        for (int i = 0; i < Math.min(collegeNames.length, COLLEGE_COLORS.size()); i++) {
+            plot.setSectionPaint(collegeNames[i], COLLEGE_COLORS.get(i));
+        }
+        plot.setLabelFont(LABEL_FONT);
         plot.setIgnoreNullValues(true);
         plot.setIgnoreZeroValues(true);
 
@@ -98,16 +90,19 @@ public final class Charts {
                 dataset, PlotOrientation.HORIZONTAL,
                 false, true, false);
 
-        CategoryPlot plot = (CategoryPlot) chart.getPlot();
+        styleBarPlot((CategoryPlot) chart.getPlot(), BLUE);
+        return chart;
+    }
+
+    private static void styleBarPlot(CategoryPlot plot, Color... seriesColors) {
         plot.setBackgroundPaint(BG_COLOR);
         plot.setDomainGridlinePaint(Color.WHITE);
         plot.setRangeGridlinePaint(Color.WHITE);
-
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
         renderer.setBarPainter(new StandardBarPainter());
-        renderer.setSeriesPaint(0, COLOR_A);
         renderer.setDrawBarOutline(false);
-
-        return chart;
+        for (int i = 0; i < seriesColors.length; i++) {
+            renderer.setSeriesPaint(i, seriesColors[i]);
+        }
     }
 }
