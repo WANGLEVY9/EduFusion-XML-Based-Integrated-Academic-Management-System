@@ -230,6 +230,17 @@ public class IntegrationServer {
                 Dom4jXmlService.addTextElement(c, "college", heat.getCollege());
                 Dom4jXmlService.addTextElement(c, "selectedCount", String.valueOf(heat.getSelectedCount()));
             }
+
+            // 添加三学院分项数据
+            Element collegesElement = statsElement.addElement("colleges");
+            for (CollegeGateway gateway : gateways.values()) {
+                Element collegeElement = collegesElement.addElement("college");
+                Dom4jXmlService.addTextElement(collegeElement, "code", gateway.getCollegeCode());
+                Dom4jXmlService.addTextElement(collegeElement, "students", String.valueOf(gateway.countStudents()));
+                Dom4jXmlService.addTextElement(collegeElement, "courses", String.valueOf(gateway.countCourses()));
+                Dom4jXmlService.addTextElement(collegeElement, "selections", String.valueOf(gateway.countSelections()));
+                Dom4jXmlService.addTextElement(collegeElement, "sharedCourses", String.valueOf(gateway.countSharedCourses()));
+            }
         }
 
         return Result.ok(response, "statistics done");
