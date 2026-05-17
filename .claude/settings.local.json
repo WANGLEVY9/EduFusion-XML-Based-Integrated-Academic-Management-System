@@ -6,7 +6,10 @@
       "Bash(mvn test *)",
       "Bash(mvn install *)",
       "WebSearch",
-      "Bash(mvn compile *)"
+      "Bash(mvn compile *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)"
     ]
   }
 }
