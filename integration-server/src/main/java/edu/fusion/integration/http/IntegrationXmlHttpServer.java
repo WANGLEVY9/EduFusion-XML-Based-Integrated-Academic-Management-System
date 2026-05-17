@@ -1,21 +1,24 @@
 package edu.fusion.integration.http;
 
-import edu.fusion.common.model.Result;
-import edu.fusion.common.service.CollegeGateway;
-import edu.fusion.common.util.Dom4jXmlService;
-import edu.fusion.integration.service.IntegrationServer;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-import org.dom4j.Document;
-import org.dom4j.Element;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+
+import org.dom4j.Document;
+import org.dom4j.Element;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
+import edu.fusion.common.model.Result;
+import edu.fusion.common.service.CollegeGateway;
+import edu.fusion.common.util.Dom4jXmlService;
+import edu.fusion.common.util.ErrorLogger;
+import edu.fusion.integration.service.IntegrationServer;
 
 public class IntegrationXmlHttpServer {
 
@@ -53,16 +56,25 @@ public class IntegrationXmlHttpServer {
                 return;
             }
             String requestXml = readBody(exchange.getRequestBody());
-            Result<Document> result = integrationServer.processRequestXml(requestXml);
-            if (!result.isSuccess() || result.getData() == null) {
+            try {
+                Result<Document> result = integrationServer.processRequestXml(requestXml);
+                if (!result.isSuccess() || result.getData() == null) {
+                    Document response = Dom4jXmlService.createDocument("response");
+                    Element root = response.getRootElement();
+                    root.addElement("success").addText("false");
+                    root.addElement("message").addText(result.getMessage());
+                    writeXml(exchange, 200, Dom4jXmlService.toCompactString(response));
+                    return;
+                }
+                writeXml(exchange, 200, Dom4jXmlService.toCompactString(result.getData()));
+            } catch (RuntimeException ex) {
+                ErrorLogger.log("integration.http.handle", ex);
                 Document response = Dom4jXmlService.createDocument("response");
                 Element root = response.getRootElement();
                 root.addElement("success").addText("false");
-                root.addElement("message").addText(result.getMessage());
+                root.addElement("message").addText("Integration server error");
                 writeXml(exchange, 200, Dom4jXmlService.toCompactString(response));
-                return;
             }
-            writeXml(exchange, 200, Dom4jXmlService.toCompactString(result.getData()));
         }
     }
 

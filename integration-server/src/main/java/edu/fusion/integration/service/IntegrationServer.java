@@ -1,20 +1,23 @@
 package edu.fusion.integration.service;
 
-import edu.fusion.common.model.Course;
-import edu.fusion.common.model.CourseHeat;
-import edu.fusion.common.model.GlobalStatistics;
-import edu.fusion.common.model.Result;
-import edu.fusion.common.service.CollegeGateway;
-import edu.fusion.common.util.Dom4jXmlService;
-import org.dom4j.Document;
-import org.dom4j.Element;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.dom4j.Document;
+import org.dom4j.Element;
+
+import edu.fusion.common.model.Course;
+import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.model.GlobalStatistics;
+import edu.fusion.common.model.Result;
+import edu.fusion.common.service.CollegeGateway;
+import edu.fusion.common.util.AuditLogger;
+import edu.fusion.common.util.Dom4jXmlService;
+import edu.fusion.common.util.ErrorLogger;
 
 public class IntegrationServer {
 
@@ -34,33 +37,47 @@ public class IntegrationServer {
                 result.addAll(gateway.listSharedCourses());
             }
         }
-        return Result.ok(result, "Shared courses fetched");
+        Result<List<Course>> response = Result.ok(result, "Shared courses fetched");
+        AuditLogger.log("shareCourse", sourceCollege, "sharedCourses", response.isSuccess(), response.getMessage());
+        return response;
     }
 
     public Result<Boolean> crossSelect(String studentId, String courseId) {
         String targetCollege = resolveCollegeByCourseId(courseId);
         CollegeGateway gateway = gateways.get(targetCollege);
         if (gateway == null) {
-            return Result.fail("Target college not found for course " + courseId);
+            Result<Boolean> response = Result.fail("Target college not found for course " + courseId);
+            AuditLogger.log("crossSelect", studentId, courseId, false, response.getMessage());
+            return response;
         }
         boolean selected = gateway.selectCourse(studentId, courseId);
         if (!selected) {
-            return Result.fail("Select failed, duplicate or unknown course");
+            Result<Boolean> response = Result.fail("Select failed, duplicate or unknown course");
+            AuditLogger.log("crossSelect", studentId, courseId, false, response.getMessage());
+            return response;
         }
-        return Result.ok(true, "Cross-college course selection succeeded");
+        Result<Boolean> response = Result.ok(true, "Cross-college course selection succeeded");
+        AuditLogger.log("crossSelect", studentId, courseId, true, response.getMessage());
+        return response;
     }
 
     public Result<Boolean> dropCourse(String studentId, String courseId) {
         String targetCollege = resolveCollegeByCourseId(courseId);
         CollegeGateway gateway = gateways.get(targetCollege);
         if (gateway == null) {
-            return Result.fail("Target college not found for course " + courseId);
+            Result<Boolean> response = Result.fail("Target college not found for course " + courseId);
+            AuditLogger.log("dropCourse", studentId, courseId, false, response.getMessage());
+            return response;
         }
         boolean dropped = gateway.dropCourse(studentId, courseId);
         if (!dropped) {
-            return Result.fail("Drop failed, selection not found");
+            Result<Boolean> response = Result.fail("Drop failed, selection not found");
+            AuditLogger.log("dropCourse", studentId, courseId, false, response.getMessage());
+            return response;
         }
-        return Result.ok(true, "Course dropped successfully");
+        Result<Boolean> response = Result.ok(true, "Course dropped successfully");
+        AuditLogger.log("dropCourse", studentId, courseId, true, response.getMessage());
+        return response;
     }
 
     public Result<GlobalStatistics> statistics() {
@@ -87,24 +104,33 @@ public class IntegrationServer {
         stats.setTotalSelections(totalSelections);
         stats.setTotalSharedCourses(totalShared);
         stats.setTopCourses(allHeats.subList(0, Math.min(10, allHeats.size())));
-
-        return Result.ok(stats, "Statistics generated");
+        Result<GlobalStatistics> response = Result.ok(stats, "Statistics generated");
+        AuditLogger.log("statistics", "system", "global", response.isSuccess(), response.getMessage());
+        return response;
     }
 
     public Result<List<Course>> queryCourses(String collegeCode) {
         CollegeGateway gateway = gateways.get(normalizeCollegeCode(collegeCode));
         if (gateway == null) {
-            return Result.fail("College not found: " + collegeCode);
+            Result<List<Course>> response = Result.fail("College not found: " + collegeCode);
+            AuditLogger.log("queryCourses", collegeCode, "college=" + collegeCode, false, response.getMessage());
+            return response;
         }
-        return Result.ok(gateway.listAllCourses(), "Courses fetched");
+        Result<List<Course>> response = Result.ok(gateway.listAllCourses(), "Courses fetched");
+        AuditLogger.log("queryCourses", collegeCode, "college=" + collegeCode, response.isSuccess(), response.getMessage());
+        return response;
     }
 
     public Result<List<Course>> myCourses(String collegeCode, String studentId) {
         CollegeGateway gateway = gateways.get(normalizeCollegeCode(collegeCode));
         if (gateway == null) {
-            return Result.fail("College not found: " + collegeCode);
+            Result<List<Course>> response = Result.fail("College not found: " + collegeCode);
+            AuditLogger.log("myCourses", studentId, "college=" + collegeCode, false, response.getMessage());
+            return response;
         }
-        return Result.ok(gateway.listStudentCourses(studentId), "Student courses fetched");
+        Result<List<Course>> response = Result.ok(gateway.listStudentCourses(studentId), "Student courses fetched");
+        AuditLogger.log("myCourses", studentId, "college=" + collegeCode, response.isSuccess(), response.getMessage());
+        return response;
     }
 
     @Deprecated
@@ -134,10 +160,10 @@ public class IntegrationServer {
             try {
                 return Path.of(resource.toURI());
             } catch (java.net.URISyntaxException e) {
-                System.out.println("Warning: invalid XSD resource URI: " + resource);
+                ErrorLogger.log("integration.resolveXsdPath", "Invalid XSD resource URI: " + resource, e);
             }
         }
-        System.out.println("Warning: request.xsd not found, skipping XSD validation");
+        ErrorLogger.log("integration.resolveXsdPath", new IllegalStateException("request.xsd not found"));
         return null;
     }
 

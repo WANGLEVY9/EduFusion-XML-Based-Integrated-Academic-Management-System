@@ -3,6 +3,7 @@ package edu.fusion.common.service;
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
 import edu.fusion.common.util.Dom4jXmlService;
+import edu.fusion.common.util.ErrorLogger;
 import org.dom4j.Document;
 import org.dom4j.Element;
 
@@ -29,7 +30,7 @@ public class RemoteCollegeGateway implements CollegeGateway {
     }
 
     public RemoteCollegeGateway(String collegeCode, String serviceUrl,
-                                 int connectTimeout, int readTimeout) {
+            int connectTimeout, int readTimeout) {
         this.collegeCode = collegeCode;
         this.serviceUrl = serviceUrl;
         this.connectTimeout = connectTimeout;
@@ -112,7 +113,6 @@ public class RemoteCollegeGateway implements CollegeGateway {
     }
 
     // ========== XML helpers ==========
-
     private Document buildSimpleRequest(String type, String... keyValues) {
         Document doc = Dom4jXmlService.createDocument("request");
         Element root = doc.getRootElement();
@@ -150,6 +150,7 @@ public class RemoteCollegeGateway implements CollegeGateway {
             }
             return readAll(is);
         } catch (IOException ex) {
+            ErrorLogger.log("remoteCollegeGateway.postXml", "College=" + collegeCode + ", url=" + serviceUrl, ex);
             throw new IllegalStateException(
                     "Failed to call college service " + collegeCode + " at " + serviceUrl, ex);
         } finally {

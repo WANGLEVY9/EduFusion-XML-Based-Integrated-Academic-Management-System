@@ -38,6 +38,7 @@ public final class IntegrationXmlHttpClient {
             }
             return readAll(inputStream);
         } catch (IOException ex) {
+            ErrorLogger.log("integrationClient.postXml", "url=" + serviceUrl, ex);
             throw new IllegalStateException("Failed to call integration service: " + serviceUrl, ex);
         } finally {
             if (connection != null) {

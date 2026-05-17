@@ -1,5 +1,6 @@
 package edu.fusion.common.ui;
 
+import edu.fusion.common.util.ErrorLogger;
 import edu.fusion.common.util.IntegrationXmlHttpClient;
 import edu.fusion.common.util.XmlUtil;
 import org.w3c.dom.Document;
@@ -296,6 +297,7 @@ public class CollegeDashboardFrame extends JFrame {
             String responseXml = IntegrationXmlHttpClient.postXml(serviceUrl, requestXml);
             return responseXml;
         } catch (RuntimeException ex) {
+            ErrorLogger.log("client.sendRequest", "serviceUrl=" + serviceUrl, ex);
             outputArea.setText(ex.getMessage());
             JOptionPane.showMessageDialog(this, ex.getMessage(), "请求失败", JOptionPane.ERROR_MESSAGE);
             return null;
@@ -453,6 +455,7 @@ public class CollegeDashboardFrame extends JFrame {
             }
             JOptionPane.showMessageDialog(this, "导出成功：" + file.getAbsolutePath(), "导出完成", JOptionPane.INFORMATION_MESSAGE);
         } catch (IOException ex) {
+            ErrorLogger.log("client.exportCsv", "file=" + file.getAbsolutePath(), ex);
             JOptionPane.showMessageDialog(this, "导出失败：" + ex.getMessage(), "导出失败", JOptionPane.ERROR_MESSAGE);
         }
     }

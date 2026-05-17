@@ -1,21 +1,25 @@
 package edu.fusion.common.server;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-import edu.fusion.common.model.Course;
-import edu.fusion.common.model.CourseHeat;
-import edu.fusion.common.service.CollegeGateway;
-import edu.fusion.common.util.Dom4jXmlService;
-import org.dom4j.Document;
-import org.dom4j.Element;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+
+import org.dom4j.Document;
+import org.dom4j.Element;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
+import edu.fusion.common.model.Course;
+import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.service.CollegeGateway;
+import edu.fusion.common.util.AuditLogger;
+import edu.fusion.common.util.Dom4jXmlService;
+import edu.fusion.common.util.ErrorLogger;
 
 public class CollegeXmlHttpServer {
 
@@ -59,6 +63,7 @@ public class CollegeXmlHttpServer {
     }
 
     private final class CollegeXmlHandler implements HttpHandler {
+
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
@@ -71,6 +76,7 @@ public class CollegeXmlHttpServer {
                 Document req = Dom4jXmlService.parse(requestXml);
                 responseXml = handleRequest(req);
             } catch (Exception ex) {
+                ErrorLogger.log("college.http.handle", ex);
                 responseXml = buildErrorXml("Request processing error: " + ex.getMessage());
             }
             writeXml(exchange, 200, responseXml);
@@ -83,35 +89,45 @@ public class CollegeXmlHttpServer {
 
         switch (type) {
             case "listAllCourses":
-                return buildCourseListXml(gateway.listAllCourses());
+                List<Course> allCourses = gateway.listAllCourses();
+                AuditLogger.log("listAllCourses", gateway.getCollegeCode(), "college=" + gateway.getCollegeCode(), true, "List all courses");
+                return buildCourseListXml(allCourses);
             case "listSharedCourses":
-                return buildCourseListXml(gateway.listSharedCourses());
+                List<Course> sharedCourses = gateway.listSharedCourses();
+                AuditLogger.log("listSharedCourses", gateway.getCollegeCode(), "college=" + gateway.getCollegeCode(), true, "List shared courses");
+                return buildCourseListXml(sharedCourses);
             case "listStudentCourses": {
                 String studentId = Dom4jXmlService.childText(root, "studentId");
-                return buildCourseListXml(gateway.listStudentCourses(studentId));
+                List<Course> courses = gateway.listStudentCourses(studentId);
+                AuditLogger.log("listStudentCourses", studentId, "college=" + gateway.getCollegeCode(), true, "List student courses");
+                return buildCourseListXml(courses);
             }
             case "selectCourse": {
                 String sid = Dom4jXmlService.childText(root, "studentId");
                 String cid = Dom4jXmlService.childText(root, "courseId");
                 boolean ok = gateway.selectCourse(sid, cid);
+                AuditLogger.log("selectCourse", sid, cid, ok, ok ? "Course selected" : "Select failed");
                 return buildSimpleResultXml(ok, ok ? "Course selected" : "Select failed");
             }
             case "dropCourse": {
                 String sid = Dom4jXmlService.childText(root, "studentId");
                 String cid = Dom4jXmlService.childText(root, "courseId");
                 boolean ok = gateway.dropCourse(sid, cid);
+                AuditLogger.log("dropCourse", sid, cid, ok, ok ? "Course dropped" : "Drop failed");
                 return buildSimpleResultXml(ok, ok ? "Course dropped" : "Drop failed");
             }
             case "authenticateStudent": {
                 String username = Dom4jXmlService.childText(root, "username");
                 String password = Dom4jXmlService.childText(root, "password");
                 boolean ok = gateway.authenticateStudent(username, password);
+                AuditLogger.log("authenticateStudent", username, "college=" + gateway.getCollegeCode(), ok, ok ? "Auth OK" : "Auth failed");
                 return buildSimpleResultXml(ok, ok ? "Auth OK" : "Auth failed");
             }
             case "authenticateAdmin": {
                 String username = Dom4jXmlService.childText(root, "username");
                 String password = Dom4jXmlService.childText(root, "password");
                 boolean ok = gateway.authenticateAdmin(username, password);
+                AuditLogger.log("authenticateAdmin", username, "college=" + gateway.getCollegeCode(), ok, ok ? "Auth OK" : "Auth failed");
                 return buildSimpleResultXml(ok, ok ? "Auth OK" : "Auth failed");
             }
             case "countStudents":
