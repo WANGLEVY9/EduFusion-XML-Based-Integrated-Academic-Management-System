@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["main", "master"]
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   build-and-test:
     strategy:
@@ -39,7 +43,7 @@ jobs:
 
   test-report:
     needs: build-and-test
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
 
     steps:
