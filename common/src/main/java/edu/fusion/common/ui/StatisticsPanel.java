@@ -61,80 +61,104 @@ public class StatisticsPanel extends JPanel {
     public void loadStatistics(String responseXml) {
         Document doc = XmlUtil.parse(responseXml);
         Element root = doc.getDocumentElement();
-        String success = XmlUtil.childText(root, "success");
 
-        if (!"true".equalsIgnoreCase(success)) {
-            cardPanel.reset();
-            chartContainer.removeAll();
-            chartContainer.add(new JLabel(
-                    "统计请求失败：" + XmlUtil.childText(root, "message"), SwingConstants.CENTER),
-                    BorderLayout.CENTER);
-            detailArea.setText("统计请求失败\n");
-            chartContainer.revalidate();
-            chartContainer.repaint();
+        if (!isSuccess(root)) {
+            showError(extractMessage(root));
             return;
         }
 
-        NodeList statsList = root.getElementsByTagName("statistics");
-        if (statsList.getLength() == 0) return;
-        Element stats = (Element) statsList.item(0);
+        Element stats = findStats(root);
+        if (stats == null) {
+            showEmptyState();
+            return;
+        }
 
-        int totalStudents = parseInt(XmlUtil.childText(stats, "totalStudents"));
-        int totalCourses = parseInt(XmlUtil.childText(stats, "totalCourses"));
-        int totalSelections = parseInt(XmlUtil.childText(stats, "totalSelections"));
-        int totalSharedCourses = parseInt(XmlUtil.childText(stats, "totalSharedCourses"));
+        int[] totals = extractTotals(stats);
+        cardPanel.setData(totals[0], totals[1], totals[2], totals[3]);
 
-        cardPanel.setData(totalStudents, totalCourses, totalSelections, totalSharedCourses);
+        List<CollegeData> colleges = extractCollegeData(stats);
+        List<CourseHeat> topCourses = extractTopCourses(stats);
 
-        // Parse college-level breakdown
-        List<String> collegeNames = new ArrayList<>();
-        List<Integer> collegeStudents = new ArrayList<>();
-        List<Integer> collegeCourses = new ArrayList<>();
-        List<Integer> collegeSelections = new ArrayList<>();
+        buildChartTabs(colleges, topCourses);
+        buildDetailText(totals, colleges, topCourses);
+    }
 
+    // ─── XML helpers ───
+
+    private static boolean isSuccess(Element root) {
+        return "true".equalsIgnoreCase(XmlUtil.childText(root, "success"));
+    }
+
+    private static String extractMessage(Element root) {
+        return XmlUtil.childText(root, "message");
+    }
+
+    private static Element findStats(Element root) {
+        NodeList list = root.getElementsByTagName("statistics");
+        return list.getLength() > 0 ? (Element) list.item(0) : null;
+    }
+
+    private static int[] extractTotals(Element stats) {
+        return new int[]{
+                parseInt(XmlUtil.childText(stats, "totalStudents")),
+                parseInt(XmlUtil.childText(stats, "totalCourses")),
+                parseInt(XmlUtil.childText(stats, "totalSelections")),
+                parseInt(XmlUtil.childText(stats, "totalSharedCourses"))
+        };
+    }
+
+    private static List<CollegeData> extractCollegeData(Element stats) {
+        List<CollegeData> result = new ArrayList<>();
         NodeList collegesNodes = stats.getElementsByTagName("colleges");
-        if (collegesNodes.getLength() > 0) {
-            NodeList collegeList = ((Element) collegesNodes.item(0)).getElementsByTagName("college");
-            for (int i = 0; i < collegeList.getLength(); i++) {
-                Element c = (Element) collegeList.item(i);
-                collegeNames.add(XmlUtil.childText(c, "code") + "学院");
-                collegeStudents.add(parseInt(XmlUtil.childText(c, "students")));
-                collegeCourses.add(parseInt(XmlUtil.childText(c, "courses")));
-                collegeSelections.add(parseInt(XmlUtil.childText(c, "selections")));
-            }
-        }
+        if (collegesNodes.getLength() == 0) return result;
 
-        // Parse top courses
-        List<CourseHeat> topCourses = new ArrayList<>();
+        NodeList collegeList = ((Element) collegesNodes.item(0)).getElementsByTagName("college");
+        for (int i = 0; i < collegeList.getLength(); i++) {
+            Element c = (Element) collegeList.item(i);
+            result.add(new CollegeData(
+                    XmlUtil.childText(c, "code") + "学院",
+                    parseInt(XmlUtil.childText(c, "students")),
+                    parseInt(XmlUtil.childText(c, "courses")),
+                    parseInt(XmlUtil.childText(c, "selections"))
+            ));
+        }
+        return result;
+    }
+
+    private static List<CourseHeat> extractTopCourses(Element stats) {
+        List<CourseHeat> result = new ArrayList<>();
         NodeList topNodes = stats.getElementsByTagName("topCourses");
-        if (topNodes.getLength() > 0) {
-            NodeList courseList = ((Element) topNodes.item(0)).getElementsByTagName("course");
-            for (int i = 0; i < courseList.getLength(); i++) {
-                Element c = (Element) courseList.item(i);
-                topCourses.add(new CourseHeat(
-                        XmlUtil.childText(c, "id"),
-                        XmlUtil.childText(c, "name"),
-                        XmlUtil.childText(c, "college"),
-                        parseInt(XmlUtil.childText(c, "selectedCount"))
-                ));
-            }
-        }
+        if (topNodes.getLength() == 0) return result;
 
-        // Build chart tab pane
+        NodeList courseList = ((Element) topNodes.item(0)).getElementsByTagName("course");
+        for (int i = 0; i < courseList.getLength(); i++) {
+            Element c = (Element) courseList.item(i);
+            result.add(new CourseHeat(
+                    XmlUtil.childText(c, "id"),
+                    XmlUtil.childText(c, "name"),
+                    XmlUtil.childText(c, "college"),
+                    parseInt(XmlUtil.childText(c, "selectedCount"))
+            ));
+        }
+        return result;
+    }
+
+    // ─── UI building ───
+
+    private void buildChartTabs(List<CollegeData> colleges, List<CourseHeat> topCourses) {
         chartContainer.removeAll();
         chartTabPane.removeAll();
 
-        if (collegeNames.size() == 3) {
+        if (colleges.size() >= 2) {
             JPanel comparePanel = new JPanel(new GridLayout(2, 1, 4, 4));
             comparePanel.setBackground(BG_COLOR);
 
-            String[] names = collegeNames.toArray(new String[0]);
-            int[] students = collegeStudents.stream().mapToInt(i -> i).toArray();
-            int[] courses = collegeCourses.stream().mapToInt(i -> i).toArray();
-            int[] selections = collegeSelections.stream().mapToInt(i -> i).toArray();
+            String[] names = colleges.stream().map(c -> c.name).toArray(String[]::new);
+            int[] students = colleges.stream().mapToInt(c -> c.students).toArray();
+            int[] courses = colleges.stream().mapToInt(c -> c.courses).toArray();
+            int[] selections = colleges.stream().mapToInt(c -> c.selections).toArray();
 
-            JFreeChart barChart = Charts.createCollegeCompareChart(
-                    names, students, courses, selections);
+            JFreeChart barChart = Charts.createCollegeCompareChart(names, students, courses, selections);
             ChartPanel barChartPanel = new ChartPanel(barChart);
             barChartPanel.setPreferredSize(new Dimension(600, 200));
             comparePanel.add(barChartPanel);
@@ -163,20 +187,24 @@ public class StatisticsPanel extends JPanel {
             chartContainer.add(chartTabPane, BorderLayout.CENTER);
         }
 
-        // Detail text output
+        chartContainer.revalidate();
+        chartContainer.repaint();
+    }
+
+    private void buildDetailText(int[] totals, List<CollegeData> colleges, List<CourseHeat> topCourses) {
         StringBuilder builder = new StringBuilder();
         builder.append("=== 统计报表 ===\n")
-                .append("总学生数: ").append(totalStudents).append("\n")
-                .append("总课程数: ").append(totalCourses).append("\n")
-                .append("总选课数: ").append(totalSelections).append("\n")
-                .append("共享课程数: ").append(totalSharedCourses).append("\n\n")
+                .append("总学生数: ").append(totals[0]).append("\n")
+                .append("总课程数: ").append(totals[1]).append("\n")
+                .append("总选课数: ").append(totals[2]).append("\n")
+                .append("共享课程数: ").append(totals[3]).append("\n\n")
                 .append("--- 学院详情 ---\n");
 
-        for (int i = 0; i < collegeNames.size(); i++) {
-            builder.append(collegeNames.get(i))
-                    .append(": 学生 ").append(collegeStudents.get(i))
-                    .append(", 课程 ").append(collegeCourses.get(i))
-                    .append(", 选课 ").append(collegeSelections.get(i)).append("\n");
+        for (CollegeData c : colleges) {
+            builder.append(c.name)
+                    .append(": 学生 ").append(c.students)
+                    .append(", 课程 ").append(c.courses)
+                    .append(", 选课 ").append(c.selections).append("\n");
         }
 
         builder.append("\n--- 热门课程 TOP10 ---\n");
@@ -191,7 +219,24 @@ public class StatisticsPanel extends JPanel {
 
         detailArea.setText(builder.toString());
         detailArea.setCaretPosition(0);
+    }
 
+    // ─── Error / empty states ───
+
+    private void showError(String message) {
+        cardPanel.reset();
+        chartContainer.removeAll();
+        chartContainer.add(new JLabel("统计请求失败：" + message, SwingConstants.CENTER), BorderLayout.CENTER);
+        detailArea.setText("统计请求失败：" + message + "\n");
+        chartContainer.revalidate();
+        chartContainer.repaint();
+    }
+
+    private void showEmptyState() {
+        cardPanel.reset();
+        chartContainer.removeAll();
+        chartContainer.add(new JLabel("没有统计数据", SwingConstants.CENTER), BorderLayout.CENTER);
+        detailArea.setText("没有统计数据\n");
         chartContainer.revalidate();
         chartContainer.repaint();
     }
@@ -202,6 +247,22 @@ public class StatisticsPanel extends JPanel {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
             return 0;
+        }
+    }
+
+    // ─── Internal model ───
+
+    private static class CollegeData {
+        final String name;
+        final int students;
+        final int courses;
+        final int selections;
+
+        CollegeData(String name, int students, int courses, int selections) {
+            this.name = name;
+            this.students = students;
+            this.courses = courses;
+            this.selections = selections;
         }
     }
 }
