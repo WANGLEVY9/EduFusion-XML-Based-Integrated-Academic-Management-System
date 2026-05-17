@@ -15,6 +15,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IntegrationServerTest {
@@ -97,6 +98,43 @@ class IntegrationServerTest {
                 + "<request><type>unknownType</type></request>";
         Result<org.dom4j.Document> result = server.processRequestXml(xml);
         assertFalse(result.isSuccess());
+    }
+
+    @Test
+    void statisticsResponseShouldContainCollegeBreakdown() {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                + "<request><type>statistics</type></request>";
+        Result<org.dom4j.Document> result = server.processRequestXml(xml);
+        assertTrue(result.isSuccess());
+
+        org.dom4j.Document doc = result.getData();
+        org.dom4j.Element root = doc.getRootElement();
+        org.dom4j.Element statistics = root.element("statistics");
+        assertNotNull(statistics);
+
+        // Verify colleges node exists with 3 college entries
+        org.dom4j.Element colleges = statistics.element("colleges");
+        assertNotNull(colleges, "statistics XML should contain <colleges> element");
+
+        @SuppressWarnings("unchecked")
+        List<org.dom4j.Element> collegeList = colleges.elements("college");
+        assertEquals(3, collegeList.size(), "Should have 3 college entries");
+
+        // Verify each college has the required fields
+        for (org.dom4j.Element c : collegeList) {
+            assertNotNull(c.elementText("code"), "college should have <code>");
+            assertNotNull(c.elementText("students"), "college should have <students>");
+            assertNotNull(c.elementText("courses"), "college should have <courses>");
+            assertNotNull(c.elementText("selections"), "college should have <selections>");
+            assertNotNull(c.elementText("sharedCourses"), "college should have <sharedCourses>");
+        }
+
+        // Verify data integrity: each stub returns 10 students, 2 courses, 0 selections
+        for (org.dom4j.Element c : collegeList) {
+            assertEquals(10, Integer.parseInt(c.elementText("students").trim()));
+            assertEquals(2, Integer.parseInt(c.elementText("courses").trim()));
+            assertEquals(0, Integer.parseInt(c.elementText("selections").trim()));
+        }
     }
 
     private static final class GatewayStub implements CollegeGateway {
