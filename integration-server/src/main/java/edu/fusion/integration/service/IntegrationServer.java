@@ -1,6 +1,7 @@
 package edu.fusion.integration.service;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -151,14 +152,14 @@ public class IntegrationServer {
     }
 
     private Path resolveXsdPath() {
-        Path fsPath = Path.of("xsd", "request.xsd");
+        Path fsPath = Paths.get("xsd", "request.xsd");
         if (fsPath.toFile().exists()) {
             return fsPath;
         }
         java.net.URL resource = getClass().getClassLoader().getResource("xsd/request.xsd");
         if (resource != null && "file".equals(resource.getProtocol())) {
             try {
-                return Path.of(resource.toURI());
+                return Paths.get(resource.toURI());
             } catch (java.net.URISyntaxException e) {
                 ErrorLogger.log("integration.resolveXsdPath", "Invalid XSD resource URI: " + resource, e);
             }
