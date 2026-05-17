@@ -14,6 +14,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -53,6 +54,8 @@ public class CollegeDashboardFrame extends JFrame {
     private final List<Object[]> filteredRows = new ArrayList<>();
     private int currentPage = 1;
     private int pageSize = 10;
+    private final JTabbedPane tabbedPane = new JTabbedPane();
+    private final StatisticsPanel statisticsPanel = new StatisticsPanel();
     private final DefaultTableModel courseTableModel = new DefaultTableModel(new String[]{"课程号", "课程名", "学分", "教师", "地点", "学院", "共享"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -93,7 +96,10 @@ public class CollegeDashboardFrame extends JFrame {
         selectButton.addActionListener(e -> selectCourse());
         myCoursesButton.addActionListener(e -> queryMyCourses());
         dropButton.addActionListener(e -> dropCourse());
-        statsButton.addActionListener(e -> queryStatistics());
+        statsButton.addActionListener(e -> {
+            queryStatistics();
+            tabbedPane.setSelectedIndex(1);
+        });
         buttonPanel.add(queryButton);
         buttonPanel.add(selectButton);
         buttonPanel.add(myCoursesButton);
@@ -175,20 +181,25 @@ public class CollegeDashboardFrame extends JFrame {
             }
         });
 
-        JPanel centerPanel = new JPanel(new BorderLayout(8, 8));
+        // Tab 1: 课程操作面板（原有全部内容）
+        JPanel coursePanel = new JPanel(new BorderLayout(8, 8));
         JPanel northControl = new JPanel(new BorderLayout(8, 8));
         northControl.add(buttonPanel, BorderLayout.NORTH);
         northControl.add(tableControlPanel, BorderLayout.SOUTH);
-        centerPanel.add(northControl, BorderLayout.NORTH);
+        coursePanel.add(northControl, BorderLayout.NORTH);
 
         JPanel dataPanel = new JPanel(new GridLayout(2, 1, 8, 8));
         dataPanel.add(new JScrollPane(courseTable));
         dataPanel.add(new JScrollPane(outputArea));
-        centerPanel.add(dataPanel, BorderLayout.CENTER);
+        coursePanel.add(dataPanel, BorderLayout.CENTER);
+
+        // Tab 2: 数据统计面板（新）
+        tabbedPane.addTab("课程操作", coursePanel);
+        tabbedPane.addTab("数据统计", statisticsPanel);
 
         JPanel root = new JPanel(new BorderLayout(8, 8));
         root.add(topPanel, BorderLayout.NORTH);
-        root.add(centerPanel, BorderLayout.CENTER);
+        root.add(tabbedPane, BorderLayout.CENTER);
         setContentPane(root);
     }
 
@@ -276,7 +287,7 @@ public class CollegeDashboardFrame extends JFrame {
     private void queryStatistics() {
         String responseXml = sendRequest(buildRequest("statistics"));
         if (responseXml != null) {
-            renderStatistics(responseXml);
+            statisticsPanel.loadStatistics(responseXml);
         }
     }
 
@@ -344,49 +355,6 @@ public class CollegeDashboardFrame extends JFrame {
                     .append(" | 学院:")
                     .append(college)
                     .append("\n");
-        }
-
-        outputArea.setText(builder.toString());
-        outputArea.setCaretPosition(0);
-        applyFilterAndRefresh();
-    }
-
-    private void renderStatistics(String responseXml) {
-        resetRowCache();
-        Document document = XmlUtil.parse(responseXml);
-        Element root = document.getDocumentElement();
-        String success = XmlUtil.childText(root, "success");
-        String message = XmlUtil.childText(root, "message");
-
-        NodeList statisticsList = root.getElementsByTagName("statistics");
-        StringBuilder builder = new StringBuilder();
-        builder.append("=== 统计报表 ===\n")
-                .append("状态: ").append("true".equalsIgnoreCase(success) ? "成功" : "失败").append("\n")
-                .append("说明: ").append(message).append("\n\n");
-
-        if (statisticsList.getLength() > 0) {
-            Element stats = (Element) statisticsList.item(0);
-            builder.append("总学生数: ").append(textOf(stats, "totalStudents")).append("\n")
-                    .append("总课程数: ").append(textOf(stats, "totalCourses")).append("\n")
-                    .append("总选课数: ").append(textOf(stats, "totalSelections")).append("\n")
-                    .append("共享课程数: ").append(textOf(stats, "totalSharedCourses")).append("\n\n")
-                    .append("热门课程TOP:\n");
-
-            NodeList courses = stats.getElementsByTagName("course");
-            for (int i = 0; i < courses.getLength(); i++) {
-                Element course = (Element) courses.item(i);
-                String id = textOf(course, "id");
-                String name = textOf(course, "name");
-                String college = textOf(course, "college");
-                String selectedCount = textOf(course, "selectedCount");
-                allRows.add(new Object[]{id, name, "", "", "", college, "TOP " + selectedCount});
-
-                builder.append(i + 1).append(". ")
-                        .append(id).append(" | ")
-                        .append(name).append(" | ")
-                        .append("学院:").append(college).append(" | ")
-                        .append("选课数:").append(selectedCount).append("\n");
-            }
         }
 
         outputArea.setText(builder.toString());
