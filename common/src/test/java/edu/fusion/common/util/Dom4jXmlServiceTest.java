@@ -1,13 +1,17 @@
 package edu.fusion.common.util;
 
-import org.dom4j.Document;
-import org.dom4j.Element;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.dom4j.Document;
+import org.dom4j.Element;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class Dom4jXmlServiceTest {
 
@@ -73,7 +77,7 @@ class Dom4jXmlServiceTest {
     @Test
     void validateAgainstXsdShouldPassForValidXml(@TempDir Path tempDir) throws Exception {
         Path xsdPath = tempDir.resolve("test-schema.xsd");
-        java.nio.file.Files.writeString(xsdPath,
+        writeString(xsdPath,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">"
                 + "  <xs:element name=\"data\">"
@@ -92,7 +96,7 @@ class Dom4jXmlServiceTest {
     @Test
     void validateAgainstXsdShouldFailForInvalidXml(@TempDir Path tempDir) throws Exception {
         Path xsdPath = tempDir.resolve("test-schema.xsd");
-        java.nio.file.Files.writeString(xsdPath,
+        writeString(xsdPath,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">"
                 + "  <xs:element name=\"data\">"
@@ -111,7 +115,7 @@ class Dom4jXmlServiceTest {
     @Test
     void validateAgainstXsdWithPathShouldWork(@TempDir Path tempDir) throws Exception {
         Path xsdPath = tempDir.resolve("test-schema.xsd");
-        java.nio.file.Files.writeString(xsdPath,
+        writeString(xsdPath,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">"
                 + "  <xs:element name=\"data\">"
@@ -124,7 +128,7 @@ class Dom4jXmlServiceTest {
                 + "</xs:schema>");
 
         Path xmlPath = tempDir.resolve("valid-data.xml");
-        java.nio.file.Files.writeString(xmlPath,
+        writeString(xmlPath,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><data><value>hello</value></data>");
 
         assertTrue(Dom4jXmlService.validateAgainstXsd(xmlPath, xsdPath));
@@ -133,7 +137,7 @@ class Dom4jXmlServiceTest {
     @Test
     void transformShouldApplyXslt(@TempDir Path tempDir) throws Exception {
         Path xsltPath = tempDir.resolve("test-transform.xslt");
-        java.nio.file.Files.writeString(xsltPath,
+        writeString(xsltPath,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<xsl:stylesheet xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" version=\"1.0\">"
                 + "  <xsl:template match=\"/\">"
@@ -149,7 +153,7 @@ class Dom4jXmlServiceTest {
     @Test
     void transformWithPathShouldWork(@TempDir Path tempDir) throws Exception {
         Path xsltPath = tempDir.resolve("identity.xslt");
-        java.nio.file.Files.writeString(xsltPath,
+        writeString(xsltPath,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<xsl:stylesheet xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" version=\"1.0\">"
                 + "  <xsl:template match=\"@*|node()\">"
@@ -159,12 +163,12 @@ class Dom4jXmlServiceTest {
 
         Path xmlPath = tempDir.resolve("input.xml");
         Path targetPath = tempDir.resolve("output.xml");
-        java.nio.file.Files.writeString(xmlPath,
+        writeString(xmlPath,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><item>data</item></root>");
 
         Dom4jXmlService.transform(xmlPath, xsltPath, targetPath);
-        assertTrue(java.nio.file.Files.exists(targetPath));
-        String content = java.nio.file.Files.readString(targetPath);
+        assertTrue(Files.exists(targetPath));
+        String content = readString(targetPath);
         assertTrue(content.contains("<item>data</item>"));
     }
 
@@ -183,5 +187,13 @@ class Dom4jXmlServiceTest {
         String responseXml = Dom4jXmlService.toString(response);
         assertTrue(responseXml.contains("<success>true</success>"));
         assertTrue(responseXml.contains("Statistics generated"));
+    }
+
+    private static void writeString(Path path, String content) throws Exception {
+        Files.write(path, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String readString(Path path) throws Exception {
+        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
     }
 }
