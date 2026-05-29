@@ -1,5 +1,6 @@
 package edu.fusion.common.ui;
 
+import edu.fusion.common.model.Role;
 import edu.fusion.common.util.ErrorLogger;
 import edu.fusion.common.util.IntegrationXmlHttpClient;
 import edu.fusion.common.util.XmlUtil;
@@ -8,8 +9,11 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -46,7 +50,10 @@ public class CollegeDashboardFrame extends JFrame {
 
     private final String collegeCode;
     private final String serviceUrl;
-    private final JTextField studentIdField = new JTextField();
+    private final String studentId;
+    private final JLabel studentIdLabel = new JLabel();
+    private final Runnable logoutCallback;
+    private final Role role;
     private final JTextField courseIdField = new JTextField();
     private final JTextArea outputArea = new JTextArea();
     private final JTextField filterField = new JTextField(22);
@@ -61,7 +68,7 @@ public class CollegeDashboardFrame extends JFrame {
     private int currentPage = 1;
     private int pageSize = 10;
     private final JTabbedPane tabbedPane = new JTabbedPane();
-    private final StatisticsPanel statisticsPanel = new StatisticsPanel();
+    private final StatisticsPanel statisticsPanel;
     private final DefaultTableModel courseTableModel = new DefaultTableModel(
             new String[]{"课程号", "课程名", "学分", "教师", "地点", "学院", "共享"}, 0) {
         @Override
@@ -77,37 +84,45 @@ public class CollegeDashboardFrame extends JFrame {
     private static final Color COLOR_ERROR = new Color(0xE7, 0x4C, 0x3C);
     private static final Color COLOR_INFO = new Color(0x29, 0x80, 0xB9);
 
-    public CollegeDashboardFrame(String title, String collegeCode, String serviceUrl, String studentId) {
+    public CollegeDashboardFrame(String title, String collegeCode, String serviceUrl,
+                                 String studentId, Runnable logoutCallback, Role role) {
         this.collegeCode = collegeCode;
         this.serviceUrl = serviceUrl;
+        this.studentId = studentId == null ? "" : studentId;
+        this.logoutCallback = logoutCallback;
+        this.role = role;
+        this.statisticsPanel = new StatisticsPanel(this::queryStatistics, role == Role.ADMIN);
+        studentIdLabel.setText(this.studentId);
+        studentIdLabel.setFont(new Font("Monospaced", Font.BOLD, 12));
         setTitle(title);
         setSize(950, 660);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        studentIdField.setText(studentId == null ? "" : studentId);
         initUi();
         updateStatus("就绪 - 已连接到集成服务");
     }
 
     private void updateStatus(String message) {
-        statusLabel.setText("学院 " + collegeCode + " | 用户 " + studentIdField.getText().trim()
+        statusLabel.setText("学院 " + collegeCode + " | 用户 " + studentId
                 + " | " + message);
     }
 
     // ─────── UI Layout ───────
 
     private void initUi() {
-        // Top: input fields
+        // Top: read-only identity info + course input
         JPanel topPanel = new JPanel(new GridLayout(2, 4, 8, 8));
         topPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 4, 6));
         topPanel.setBackground(BG_HEADER);
         topPanel.add(new JLabel("学院"));
         topPanel.add(new JLabel(collegeCode));
         topPanel.add(new JLabel("学生编号"));
-        topPanel.add(studentIdField);
+        topPanel.add(studentIdLabel);
         topPanel.add(new JLabel("课程编号"));
         topPanel.add(courseIdField);
-        topPanel.add(new JLabel(""));
+        JButton profileButton = new JButton("个人中心");
+        profileButton.addActionListener(e -> showProfileDialog());
+        topPanel.add(profileButton);
         topPanel.add(new JLabel(""));
 
         // Enter key in courseIdField → focus studentId for crossSelect
@@ -230,6 +245,14 @@ public class CollegeDashboardFrame extends JFrame {
         tabbedPane.addTab("课程操作", coursePanel);
         tabbedPane.addTab("数据统计", statisticsPanel);
 
+        // Auto-load statistics when switching to the statistics tab
+        tabbedPane.addChangeListener(e -> {
+            if (tabbedPane.getSelectedComponent() == statisticsPanel
+                    && !statisticsPanel.isDataLoaded()) {
+                queryStatistics();
+            }
+        });
+
         // Status bar
         statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
         statusLabel.setHorizontalAlignment(SwingConstants.LEFT);
@@ -341,6 +364,55 @@ public class CollegeDashboardFrame extends JFrame {
             statisticsPanel.loadStatistics(responseXml);
             updateStatus("统计报表已加载");
         }
+    }
+
+    // ─────── Profile & Logout ───────
+
+    private void showProfileDialog() {
+        JDialog dialog = new JDialog(this, "个人中心", true);
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+
+        Font labelFont = new Font("SansSerif", Font.PLAIN, 14);
+        JLabel collegeLabel = new JLabel("学院: " + collegeCode);
+        collegeLabel.setFont(labelFont);
+        panel.add(collegeLabel);
+
+        panel.add(Box.createVerticalStrut(10));
+        JLabel idLabel = new JLabel("学生编号: " + studentId);
+        idLabel.setFont(labelFont);
+        panel.add(idLabel);
+
+        panel.add(Box.createVerticalStrut(10));
+        JLabel urlLabel = new JLabel("服务地址: " + serviceUrl);
+        urlLabel.setFont(labelFont);
+        panel.add(urlLabel);
+
+        panel.add(Box.createVerticalStrut(16));
+
+        JButton logoutButton = new JButton("退出登录");
+        logoutButton.setAlignmentX(JButton.CENTER_ALIGNMENT);
+        logoutButton.setFont(new Font("SansSerif", Font.BOLD, 12));
+        logoutButton.addActionListener(e -> {
+            dialog.dispose();
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "确定要退出登录吗？\n当前用户: " + studentId,
+                    "退出确认", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                dispose();
+                if (logoutCallback != null) {
+                    logoutCallback.run();
+                }
+            }
+        });
+        panel.add(logoutButton);
+
+        dialog.setContentPane(panel);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+        dialog.setVisible(true);
     }
 
     // ─────── HTTP and XML helpers ───────
@@ -546,17 +618,11 @@ public class CollegeDashboardFrame extends JFrame {
     // ─────── Input validation ───────
 
     private String requireStudentId() {
-        String value = studentIdField.getText().trim();
-        if (value.isEmpty()) {
-            value = JOptionPane.showInputDialog(this, "请输入学生编号");
-            if (value != null) value = value.trim();
-        }
-        if (value == null || value.isEmpty()) {
+        if (studentId.isEmpty()) {
             JOptionPane.showMessageDialog(this, "学生编号不能为空", "提示", JOptionPane.WARNING_MESSAGE);
             return null;
         }
-        studentIdField.setText(value);
-        return value;
+        return studentId;
     }
 
     private String requireCourseId() {

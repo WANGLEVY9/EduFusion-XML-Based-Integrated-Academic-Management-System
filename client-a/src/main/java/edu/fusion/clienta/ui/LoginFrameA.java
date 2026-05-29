@@ -60,7 +60,12 @@ public class LoginFrameA extends JFrame {
                 role == Role.ADMIN ? "A学院管理员端" : "A学院学生端",
                 "A",
                 "http://localhost:8080/api/xml",
-                username);
+                username,
+                () -> {
+                    LoginFrameA loginFrame = new LoginFrameA();
+                    loginFrame.setVisible(true);
+                },
+                role);
         dashboard.setVisible(true);
         dispose();
     }

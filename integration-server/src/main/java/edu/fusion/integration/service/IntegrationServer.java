@@ -278,6 +278,22 @@ public class IntegrationServer {
                 Dom4jXmlService.addTextElement(collegeElement, "selections", String.valueOf(gateway.countSelections()));
                 Dom4jXmlService.addTextElement(collegeElement, "sharedCourses", String.valueOf(gateway.countSharedCourses()));
             }
+
+            // 全课程列表（含教师、学分等信息，供客户端筛选和绘图）
+            Element allCoursesElement = statsElement.addElement("allCourses");
+            for (CollegeGateway gateway : gateways.values()) {
+                List<Course> courses = gateway.listAllCourses();
+                for (Course c : courses) {
+                    Element ce = allCoursesElement.addElement("course");
+                    Dom4jXmlService.addTextElement(ce, "id", c.getId());
+                    Dom4jXmlService.addTextElement(ce, "name", c.getName());
+                    Dom4jXmlService.addTextElement(ce, "credit", String.valueOf(c.getCredit()));
+                    Dom4jXmlService.addTextElement(ce, "teacher", c.getTeacher());
+                    Dom4jXmlService.addTextElement(ce, "location", c.getLocation());
+                    Dom4jXmlService.addTextElement(ce, "college", c.getCollege());
+                    Dom4jXmlService.addTextElement(ce, "shared", String.valueOf(c.isShared()));
+                }
+            }
         }
 
         return Result.ok(response, "statistics done");
