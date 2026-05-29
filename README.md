@@ -980,6 +980,31 @@ Oracle 容器使用 `AL32UTF8` 字符集，JDBC URL 为 `jdbc:oracle:thin:@local
 | MySQL 中文双编码 | 插入时 `mysql` CLI 使用 `latin1` 连接 | 指定 `--default-character-set=utf8mb4` 重插 |
 | 客户端 B 登录无反应 | Maven 本地仓库 `server-b` jar 中 properties 为旧 MySQL 配置 | `mvn clean install -DskipTests` 更新仓库 |
 
+### 逻辑修复（2026-05-29）
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| 跨院选课后「我的课程」不显示 | `myCourses()` 只查学生所属学院的选课表 | 改为**遍历所有学院网关**聚合查询结果 (IntegrationServer.java:125-135) |
+| 非共享课程可被跨院选修 | `crossSelect()` 未校验课程的共享标识 | 在选课前调用 `listSharedCourses()` 验证目标课程是否为共享 (IntegrationServer.java:54-59) |
+| SQL Server SelectA 外键阻止跨院选课 | SelectA.sid 有 FK → StudentA.sid，外院学生 ID 无法插入 | **去掉 FK 约束**（SelectA 改为仅主键，与 SelectB/SelectC 一致）(docker/sqlserver/init.sql:40-51) |
+| 「共享课程选课」按钮逻辑混乱 | 一个按钮同时承担"查看"和"确认选课"两个功能 | 拆分为 **「查看共享课程」**和 **「跨院选课」** 两个独立按钮 (CollegeDashboardFrame.java:90-111) |
+| 选课成功后课程编号未清空 | `renderSimpleResult()` 不清空 courseIdField | `crossSelect` 成功后执行 `courseIdField.setText("")` |
+
+### UI/UX 改进
+
+- 按钮按功能分组（查询组 / 操作组 / 统计组），间距更清晰
+- 底部**状态栏**显示学院、用户、当前操作状态
+- 课程编号输入框支持**回车键直接选课**
+- 表格支持**列排序**（`setAutoCreateRowSorter(true)`）
+- 操作结果输出区使用即时刷新方式替代追加堆积
+- 表格行高、表头字体、整体间距优化
+
+### 代码清理
+
+- 移除 `IntegrationServerBootstrap.java` 中未使用的 `server` 变量（死代码）
+- 移除所有 `.bak` 备份文件
+- 更新 `.gitignore` 添加 `logs/`、`*.bak`、`db/` 规则
+
 ---
 
 ## 17. 附录：文件结构
@@ -1056,4 +1081,5 @@ EduFusion-XML-Based-Integrated-Academic-Management-System/
 > **版本**：1.0.0  
 > **技术栈**：Java 8 + Swing + XML over HTTP (DOM4J + Xerces) + XSD + XSLT  
 > **数据库**：SQL Server 2022 / Oracle XE 21c / MySQL 8.0（Docker 异构模式）  
-> **项目状态**：✅ 全部功能完成，三院客户端可同时登录操作
+> **项目状态**：✅ 全部功能完成，三院客户端可同时登录操作  
+> **测试通过率**：48/48 全覆盖测试通过（含 6 种请求类型 × 3 学院 × 边界/异常场景）

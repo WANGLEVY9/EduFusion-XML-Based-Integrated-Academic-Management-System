@@ -37,16 +37,14 @@ BEGIN
 END
 GO
 
--- 选课表
+-- 选课表（无外键约束，以支持跨院选课：外院学生ID不存在于本院Student表）
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SelectA')
 BEGIN
     CREATE TABLE SelectA (
         sid VARCHAR(12) NOT NULL,
         cid VARCHAR(10) NOT NULL,
         score INT NULL,
-        PRIMARY KEY (sid, cid),
-        FOREIGN KEY (sid) REFERENCES StudentA(sid),
-        FOREIGN KEY (cid) REFERENCES CourseA(cid)
+        PRIMARY KEY (sid, cid)
     );
 END
 GO

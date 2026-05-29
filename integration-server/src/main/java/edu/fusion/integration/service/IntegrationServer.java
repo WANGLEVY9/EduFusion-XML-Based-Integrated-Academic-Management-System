@@ -51,6 +51,14 @@ public class IntegrationServer {
             AuditLogger.log("crossSelect", studentId, courseId, false, response.getMessage());
             return response;
         }
+        // 只允许选择目标学院标记为共享的课程
+        boolean isShared = gateway.listSharedCourses().stream()
+                .anyMatch(c -> courseId.equals(c.getId()));
+        if (!isShared) {
+            Result<Boolean> response = Result.fail("Course " + courseId + " is not shared, cross-college selection not allowed");
+            AuditLogger.log("crossSelect", studentId, courseId, false, response.getMessage());
+            return response;
+        }
         boolean selected = gateway.selectCourse(studentId, courseId);
         if (!selected) {
             Result<Boolean> response = Result.fail("Select failed, duplicate or unknown course");
@@ -123,14 +131,16 @@ public class IntegrationServer {
     }
 
     public Result<List<Course>> myCourses(String collegeCode, String studentId) {
-        CollegeGateway gateway = gateways.get(normalizeCollegeCode(collegeCode));
-        if (gateway == null) {
-            Result<List<Course>> response = Result.fail("College not found: " + collegeCode);
-            AuditLogger.log("myCourses", studentId, "college=" + collegeCode, false, response.getMessage());
-            return response;
+        List<Course> allCourses = new ArrayList<>();
+        for (CollegeGateway gateway : gateways.values()) {
+            try {
+                allCourses.addAll(gateway.listStudentCourses(studentId));
+            } catch (Exception e) {
+                ErrorLogger.log("integration.myCourses", "Error querying college " + gateway.getCollegeCode() + " for student " + studentId, e);
+            }
         }
-        Result<List<Course>> response = Result.ok(gateway.listStudentCourses(studentId), "Student courses fetched");
-        AuditLogger.log("myCourses", studentId, "college=" + collegeCode, response.isSuccess(), response.getMessage());
+        Result<List<Course>> response = Result.ok(allCourses, "Student courses fetched from all colleges");
+        AuditLogger.log("myCourses", studentId, "college=" + normalizeCollegeCode(collegeCode), response.isSuccess(), response.getMessage());
         return response;
     }
 

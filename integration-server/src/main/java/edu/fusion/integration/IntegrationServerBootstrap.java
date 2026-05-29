@@ -33,7 +33,6 @@ public class IntegrationServerBootstrap {
             System.out.println("Integration Server: using LOCAL inline (direct JDBC) college gateways");
         }
 
-        IntegrationServer server = new IntegrationServer(gateways);
         IntegrationXmlHttpServer httpServer = new IntegrationXmlHttpServer(gateways);
         httpServer.start(INTEGRATION_PORT);
 
