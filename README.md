@@ -260,7 +260,7 @@ mysql -uroot -p123456 < sql\all-colleges-mysql.sql
 该脚本将：
 - 创建数据库 `edufusion_iams`
 - 创建三院所有表（StudentA/B/C、CourseA/B/C、SelectA/B/C、AdminA/B/C）
-- 插入 **60 名学生/学院**、**12 门课程/学院**、**每生 5 门选课**
+- 插入 **60 名学生/学院**、**12 门课程/学院**、**每生 5 门选课**（共 900 条选课记录）
 - 插入管理员账号
 
 ### 7.2 编译项目
@@ -332,7 +332,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 ### 8.2 数据库初始化
 
-各容器支持自动初始化：
+各容器支持自动建表：
 
 | 容器 | 初始化方式 | 脚本 |
 |------|-----------|------|
@@ -340,28 +340,31 @@ docker compose -f docker/docker-compose.yml up -d
 | Oracle | 通过 `/docker-entrypoint-initdb.d/` 自动执行 | `docker/oracle/init.sql` |
 | MySQL | 通过 `/docker-entrypoint-initdb.d/` 自动执行 | `docker/mysql/init.sql` |
 
-初始化脚本默认仅创建**表结构和管理员账号**。如需填充完整的学生/课程/选课数据，额外执行：
+初始化脚本默认仅创建**表结构和管理员账号**。启动完成后，使用一键导入脚本填充差异化数据：
 
-**SQL Server：**
 ```powershell
-# 确认容器健康后，手动填充数据
-docker cp docker/sqlserver/insert-data-a.sql edufusion-sqlserver:/tmp/
-docker exec edufusion-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "EduFusion123!" -C -i /tmp/insert-data-a.sql
+# 脚本均在项目根目录执行
+
+# 导入 College A — SQL Server（60 学生 + 52 课程 + 360 选课）
+.\seed-college-a.cmd
+
+# 导入 College B — Oracle（55 学生 + 52 课程 + 165 选课）
+.\seed-college-b.cmd
+
+# 导入 College C — MySQL（65 学生 + 52 课程 + 390 选课）
+.\seed-college-c.cmd
 ```
 
-**Oracle：**
-```powershell
-# 使用完整初始化脚本（建表+数据），直接对 PDB 执行
-docker cp docker/oracle/full-init-b.sql edufusion-oracle:/tmp/
-docker exec edufusion-oracle sqlplus EDUFUSION_B/EduFusion123@EDUFUSION_B @/tmp/full-init-b.sql
-```
+每个脚本会自动检测 Docker 容器是否运行，并通过管道将 SQL 文件传入容器执行。
 
-**MySQL：**
-```powershell
-docker exec -i edufusion-mysql mysql -uroot -p123456 --default-character-set=utf8mb4 edufusion_iams_c < docker/mysql/insert-data-c.sql
-```
+> **脚本文件对应关系**：
+> - `seed-college-a.cmd` → `docker/sqlserver/insert-data-a-differentiated.sql`
+> - `seed-college-b.cmd` → `docker/oracle/insert-data-b-differentiated.sql`
+> - `seed-college-c.cmd` → `docker/mysql/insert-data-c-differentiated.sql`
 
-> **数据规格**：每院 30 名学生、12 门课程、150 条选课记录（每生 5 门）。
+三个学院的数据经过差异化设计，具有不同的学科方向、学生规模、选课密度，使得统计图表呈现出真实的差异化分布。
+
+> **旧版数据脚本**（`insert-data-a.sql` / `insert-data-b.sql` / `insert-data-c.sql`）仍保留在对应目录中，每院 30 学生 + 12 课程 + 150 选课。建议使用新版 `*-differentiated.sql` 脚本获取更丰富的演示数据。
 
 ### 8.3 启动学院服务（远程模式）
 
@@ -504,12 +507,43 @@ docker compose -f docker/docker-compose.yml down -v
 
 ### 9.6 统计报表
 
-统计报表 Tab 包含：
+统计报表 Tab 提供完整的可视化分析体验，采用 "卡片画廊 → 点击详情" 的导航模式：
 
-- **统计卡片**（4 张）： 总学生数、总课程数、总选课数、共享课程数
-- **学院对比图表**：分组柱状图和饼图，直观对比三院数据
-- **课程热度 TOP10**：水平柱状图，按选课人数排序
-- **文字详情**：各院分项统计数据文本输出
+**概览卡片**（4 张展示在顶部）：
+- 总学生数 / 总课程数 / 总选课数 / 共享课程数
+
+**图表画廊**（点击任意图表进入详情视图）：
+
+| 图表 | 类型 | 说明 |
+|------|------|------|
+| 三学院指标对比 | 分组柱状图 | 学生数/课程数/选课数三院横向对比 |
+| 选课比例分布 | 饼图 | 各学院选课数占比 |
+| 课程热度 TOP10 | 水平柱状图 | 按选课人数排序的热门课程 |
+| 学生选课分布 | 环形图 | 各院学生人均选课密度对比 |
+| 三学院指标堆积 | 堆叠柱状图 | 三院各指标累积对比 |
+| 指标变化趋势 | 折线图 | 课程热度排名变化趋势 |
+| 三学院指标面积 | 面积图 | 三院指标面积对比 |
+| 学分分布散点 | 散点图 | 课程学分 × 选课人数分布 |
+| 共享课程对比 | 柱状图 | 三院共享课程数量对比 |
+| 人均选课密度 | 柱状图 | 每院选课总数 ÷ 学生数 |
+| 课程分类分布 | 饼图 | 各学院全部课程比例分布 |
+
+**管理员专属图表**（以管理员身份登录时额外显示）：
+
+| 图表 | 类型 | 说明 |
+|------|------|------|
+| 教师授课量统计 | 柱状图 | 各教师承担课程数量 |
+| 学分分布统计 | 柱状图 | 不同学分区间的课程数量 |
+| 共享课程占比 | 环形图 | 共享课程 vs 非共享课程比例 |
+
+**详情视图交互功能**：
+- 学院筛选：勾选/取消勾选学院复选框，动态过滤图表数据
+- 教师筛选：从下拉菜单选择特定教师，聚焦其授课数据
+- 「应用」按钮：应用当前筛选条件重建图表
+- 「重置」按钮：恢复默认显示全部数据
+- 「返回画廊」按钮：回到图表选择画廊
+
+> 管理员模式在登录时选择身份为"管理员"即可激活，可查看更宏观的全局数据统计。
 
 ---
 
@@ -735,7 +769,7 @@ CREATE TABLE AdminC (
 
 ### 11.2 本地模式（单一 MySQL）
 
-参见 `sql/all-colleges-mysql.sql`，在同一数据库 `edufusion_iams` 中创建全部 12 张表（StudentA/B/C、CourseA/B/C、SelectA/B/C、AdminA/B/C），每院 60 名学生、12 门课程。
+参见 `sql/all-colleges-mysql.sql`，在同一数据库 `edufusion_iams` 中创建全部 12 张表（StudentA/B/C、CourseA/B/C、SelectA/B/C、AdminA/B/C），每院 60 名学生、12 门课程，合计 180 名学生、36 门课程、900 条选课记录。
 
 ---
 
@@ -812,9 +846,9 @@ CREATE TABLE AdminC (
 
 | 学院 | 学生范围 | 学生密码 | 管理员账号 | 管理员密码 |
 |------|---------|---------|-----------|-----------|
-| A | A001 ~ A030 | `123456` | `adminA` | `admin123` |
-| B | B001 ~ B030 | `123456` | `adminB` | `admin123` |
-| C | C001 ~ C030 | `123456` | `adminC` | `admin123` |
+| A | A001 ~ A060 | `123456` | `adminA` | `admin123` |
+| B | B001 ~ B055 | `123456` | `adminB` | `admin123` |
+| C | C001 ~ C065 | `123456` | `adminC` | `admin123` |
 
 ### 13.2 本地模式账号
 
@@ -824,14 +858,20 @@ CREATE TABLE AdminC (
 | B | B001 ~ B060 | `123456` | `adminB` / `admin123` |
 | C | C001 ~ C060 | `123456` | `adminC` / `admin123` |
 
-### 13.3 Docker 模式数据规格
+### 13.3 Docker 模式数据规格（差异化数据）
 
-| 统计项 | 学院 A | 学院 B | 学院 C | 合计 |
-|--------|-------|-------|-------|------|
-| 学生数 | 30 | 30 | 30 | **90** |
-| 课程数 | 12 | 12 | 12 | **36** |
-| 选课记录 | 150 | 150 | 150 | **450** |
-| 共享课程 | 8 | 8 | 8 | **24** |
+> 以下为运行 `seed-college-*.cmd` 后导入的数据量。旧版脚本（`insert-data-*.sql`）仍保持每院 30 学生、12 课程、150 选课。
+
+| 统计项 | 学院 A (SQL Server) | 学院 B (Oracle) | 学院 C (MySQL) | 合计 |
+|--------|:--------:|:-------:|:-------:|:------:|
+| 学生数 | **60** | **55** | **65** | **180** |
+| 课程数 | **52** | **52** | **52** | **156** |
+| 选课记录 | **360** | **165** | **390** | **915** |
+| 共享课程 | **33** | **29** | **30** | **92** |
+| 人均选课密度 | **6.0** | **3.0** | **6.0** | **5.08** |
+| 学科方向 | 计算机/IT | 经济学/管理 | 电子/自动化 | — |
+
+各院学科方向与选课密度均不同，统计图表将呈现真实的差异化分布。
 
 ### 13.4 本地模式数据规格
 
@@ -1005,6 +1045,60 @@ Oracle 容器使用 `AL32UTF8` 字符集，JDBC URL 为 `jdbc:oracle:thin:@local
 - 移除所有 `.bak` 备份文件
 - 更新 `.gitignore` 添加 `logs/`、`*.bak`、`db/` 规则
 
+### 统计面板重构（2026-05-30）
+
+| 文件 | 变更内容 |
+|------|---------|
+| `common/.../StatisticsPanel.java` | **重构**：堆叠全尺寸图表 → "卡片画廊 → 点击详情" 导航模式；新增 CardLayout 三卡片切换（占位/画廊/详情）；新增交互筛选器（学院复选框 + 教师下拉）；新增 3 个管理员图表 |
+| `common/.../Charts.java` | **新增** 3 个管理员图表方法（`createTeacherWorkloadChart`、`createCreditDistributionChart`、`createSharedRatioPieChart`）；**修复** JFreeChart 中文渲染问题（全局 StandardChartTheme 设置中文字体） |
+| `common/.../CollegeDashboardFrame.java` | **修改**：接收 Role 参数传递给 StatisticsPanel |
+| `client-*/.../LoginFrame*.java` | **修改**：传递 Role 作为第 6 个参数 |
+| `integration-server/.../IntegrationServer.java` | **增强**：统计接口新增 `<allCourses>` 段（含完整课程详情）和 per-college `<sharedCourses>` 计数 |
+
+### 差异化数据脚本（2026-05-30）
+
+| 文件 | 变更内容 |
+|------|---------|
+| `docker/sqlserver/insert-data-a-differentiated.sql` | **新建** — 60 学生（6 专业，计算机/IT 方向）+ 52 课程 + 360 选课 |
+| `docker/oracle/insert-data-b-differentiated.sql` | **新建** — 55 学生（5 专业，经管方向）+ 52 课程 + 165 选课 |
+| `docker/mysql/insert-data-c-differentiated.sql` | **新建** — 65 学生（5 专业，工程方向）+ 52 课程 + 390 选课 |
+| `seed-college-a.cmd` | **新建** — 一键导入 SQL Server 差异化数据 |
+| `seed-college-b.cmd` | **新建** — 一键导入 Oracle 差异化数据 |
+| `seed-college-c.cmd` | **新建** — 一键导入 MySQL 差异化数据 |
+
+### 统计面板增强详情
+
+**交互模式变更：**
+- 旧版：全部图表垂直堆叠排列，一次性加载所有图表
+- 新版：顶部 4 张概览卡片 + 下方图标画廊（点击进入详情视图）
+
+**详情视图功能：**
+- 图表区域（800×500 首选项大小，含缩放工具栏）
+- 学院筛选复选框（动态勾选/取消各学院）
+- 教师下拉筛选（从全部课程中提取教师列表）
+- 「应用」按钮应用筛选条件重建图表
+- 「重置」按钮恢复默认显示
+- 「返回画廊」按钮回到图表选择界面
+
+**管理员模式：**
+- 登录时选择"管理员"身份，传递 Role.ADMIN 到 StatisticsPanel
+- 画廊中额外显示 3 张管理图表：教师授课量、学分分布统计、共享课程占比
+- 管理员图表提供宏观全局视角，适合教学管理决策
+
+**中文渲染修复：**
+- JFreeChart 默认字体不包含中文字符
+- 通过 `StandardChartTheme` 将全局字体设置为 Microsoft YaHei / SimHei 等中文字体
+- 使用 `Font.deriveFont()` 保持字体样式统一
+
+### 差异化数据设计
+
+| 维度 | 学院 A | 学院 B | 学院 C |
+|------|--------|--------|--------|
+| 学科方向 | 计算机科学 / 软件工程 / 人工智能 / 数据科学 / 网络工程 / 信息安全 | 经济学 / 金融学 / 会计学 / 国际贸易 / 管理学 | 电子工程 / 通信工程 / 自动化 / 物联网 / 机器人工程 |
+| 课程体系 | 数据结构、机器学习、计算机网络等 52 门 | 微观经济学、金融学原理、会计学原理等 52 门 | 电路分析、自动控制原理、机器人学基础等 52 门 |
+| 选课密度 | 6.0（高密度，CS 学生选课积极） | 3.0（低密度，经管学生选课精简） | 6.0（高密度，工程学生选课饱满） |
+| 学生规模 | 60 人，6 专业 × 10 人 | 55 人，5 专业 × 11 人 | 65 人，5 专业 × 13 人 |
+
 ---
 
 ## 17. 附录：文件结构
@@ -1043,11 +1137,25 @@ EduFusion-XML-Based-Integrated-Academic-Management-System/
 ├── client-b/                      # B 学院 Swing 客户端
 ├── client-c/                      # C 学院 Swing 客户端
 │
+├── seed-college-a.cmd             # 一键导入 College A 差异化数据（SQL Server）
+├── seed-college-b.cmd             # 一键导入 College B 差异化数据（Oracle）
+├── seed-college-c.cmd             # 一键导入 College C 差异化数据（MySQL）
+│
 ├── docker/                        # Docker 异构数据库部署
 │   ├── docker-compose.yml
-│   ├── sqlserver/    (init.sql + insert-data-a.sql)
-│   ├── oracle/       (init.sql + full-init-b.sql + insert-data-b.sql)
-│   └── mysql/        (init.sql + insert-data-c.sql)
+│   ├── sqlserver/
+│   │   ├── init.sql                           # 建表 + 管理账号
+│   │   ├── insert-data-a.sql                  # 旧版：30 学生 + 12 课程 + 150 选课
+│   │   └── insert-data-a-differentiated.sql   # 新版：60 学生 + 52 课程 + 360 选课（差异化）
+│   ├── oracle/
+│   │   ├── init.sql                           # 建表 + 管理账号
+│   │   ├── full-init-b.sql                    # 旧版：建表+30 学生+12 课程+150 选课
+│   │   ├── insert-data-b.sql                  # 旧版：30 学生 + 12 课程 + 150 选课
+│   │   └── insert-data-b-differentiated.sql   # 新版：55 学生 + 52 课程 + 165 选课（差异化）
+│   └── mysql/
+│       ├── init.sql                           # 建表 + 管理账号
+│       ├── insert-data-c.sql                  # 旧版：30 学生 + 12 课程 + 150 选课
+│       └── insert-data-c-differentiated.sql   # 新版：65 学生 + 52 课程 + 390 选课（差异化）
 │
 ├── sql/                           # 本地模式 SQL 脚本
 │   └── all-colleges-mysql.sql     # 全部学院表结构+数据（单一 MySQL）
@@ -1078,8 +1186,8 @@ EduFusion-XML-Based-Integrated-Academic-Management-System/
 
 ---
 
-> **版本**：1.0.0  
-> **技术栈**：Java 8 + Swing + XML over HTTP (DOM4J + Xerces) + XSD + XSLT  
+> **版本**：2.0.0  
+> **技术栈**：Java 8 + Swing + XML over HTTP (DOM4J + Xerces) + XSD + XSLT + JFreeChart 1.5.5  
 > **数据库**：SQL Server 2022 / Oracle XE 21c / MySQL 8.0（Docker 异构模式）  
-> **项目状态**：✅ 全部功能完成，三院客户端可同时登录操作  
+> **项目状态**：✅ 全部功能完成，三院客户端可同时登录操作，支持管理员模式  
 > **测试通过率**：48/48 全覆盖测试通过（含 6 种请求类型 × 3 学院 × 边界/异常场景）
