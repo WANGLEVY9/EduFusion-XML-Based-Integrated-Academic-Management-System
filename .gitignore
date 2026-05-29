@@ -9,3 +9,11 @@
 # OS files
 .DS_Store
 Thumbs.db
+
+# Runtime logs
+logs/
+common/logs/
+
+# Backup files
+*.bak
+db/

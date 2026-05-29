@@ -15,9 +15,9 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'StudentA')
 BEGIN
     CREATE TABLE StudentA (
         sid VARCHAR(12) PRIMARY KEY,
-        sname VARCHAR(20) NOT NULL,
-        sex VARCHAR(2),
-        dept VARCHAR(30),
+        sname NVARCHAR(20) NOT NULL,
+        sex NVARCHAR(2),
+        dept NVARCHAR(30),
         password VARCHAR(64) NOT NULL
     );
 END
@@ -28,10 +28,10 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'CourseA')
 BEGIN
     CREATE TABLE CourseA (
         cid VARCHAR(10) PRIMARY KEY,
-        cname VARCHAR(30) NOT NULL,
+        cname NVARCHAR(30) NOT NULL,
         credit INT NOT NULL,
-        teacher VARCHAR(20),
-        room VARCHAR(20),
+        teacher NVARCHAR(20),
+        room NVARCHAR(20),
         shareFlag CHAR(1) NOT NULL
     );
 END
@@ -55,7 +55,7 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AdminA')
 BEGIN
     CREATE TABLE AdminA (
-        username VARCHAR(32) PRIMARY KEY,
+        username NVARCHAR(32) PRIMARY KEY,
         password VARCHAR(64) NOT NULL
     );
 END
