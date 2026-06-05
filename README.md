@@ -846,21 +846,21 @@ CREATE TABLE AdminC (
 
 | 学院 | 学生范围 | 学生密码 | 管理员账号 | 管理员密码 |
 |------|---------|---------|-----------|-----------|
-| A | A001 ~ A060 | `123456` | `adminA` | `admin123` |
-| B | B001 ~ B055 | `123456` | `adminB` | `admin123` |
-| C | C001 ~ C065 | `123456` | `adminC` | `admin123` |
+| A | A001 ~ A120 | `123456` | `adminA` | `admin123` |
+| B | B001 ~ B120 | `123456` | `adminB` | `admin123` |
+| C | C001 ~ C120 | `123456` | `adminC` | `admin123` |
 
 ### 13.2 本地模式账号
 
 | 学院 | 学生范围 | 学生密码 | 管理员账号 |
 |------|---------|---------|-----------|
-| A | A001 ~ A060 | `123456` | `adminA` / `admin123` |
-| B | B001 ~ B060 | `123456` | `adminB` / `admin123` |
-| C | C001 ~ C060 | `123456` | `adminC` / `admin123` |
+| A | A001 ~ A120 | `123456` | `adminA` / `admin123` |
+| B | B001 ~ B120 | `123456` | `adminB` / `admin123` |
+| C | C001 ~ C120 | `123456` | `adminC` / `admin123` |
 
 ### 13.3 Docker 模式数据规格（差异化数据）
 
-> 以下为运行 `seed-college-*.cmd` 后导入的数据量。旧版脚本（`insert-data-*.sql`）仍保持每院 30 学生、12 课程、150 选课。
+> 以下为运行 `seed-college-*.cmd` 后导入的数据量。每院数据经过差异化设计，具有不同的学科方向、学生规模、选课密度。
 
 | 统计项 | 学院 A (SQL Server) | 学院 B (Oracle) | 学院 C (MySQL) | 合计 |
 |--------|:--------:|:-------:|:-------:|:------:|
@@ -876,6 +876,87 @@ CREATE TABLE AdminC (
 ### 13.4 本地模式数据规格
 
 每学院 60 名学生、12 门课程、每生 5 门选课，合计 180 名学生、36 门课程、900 条选课记录。
+
+### 13.5 作业 4 数据上传规格（hw4 远程服务器）
+
+按助教要求，将本地差异化数据扩展后上传至远程 MySQL 服务器，用于布置作业 4。
+
+| 项目 | 内容 |
+|------|------|
+| 目标服务器 | `10.60.254.44:3306` |
+| 数据库名 | `hw4` |
+| 组号 | `2` |
+| 上载工具 | `generate_hw4_data.py`（Python 自动生成 + mysql CLI 执行） |
+
+**数据规格：**
+
+| 统计项 | 学院 A (dept_no=A) | 学院 B (dept_no=B) | 学院 C (dept_no=C) | 合计 |
+|--------|:--------:|:-------:|:-------:|:------:|
+| 学生数 | **120** | **120** | **120** | **360** |
+| 课程数 | **104** | **104** | **104** | **312** |
+| 选课记录 | **840** | **720** | **840** | **2400** |
+| 人均选课密度 | **7.0** | **6.0** | **7.0** | **6.67** |
+| 学科方向 | 计算机/IT + 数字媒体 + 信息科学 + 科技人文 | 经管 + 社会学 + 心理学 + 新闻传播 + 教育 | 工程 + 航空航天 + 生物医学 + 材料 + 环境 |
+
+**表结构（统一格式，含组号与院系编号）：**
+
+```sql
+CREATE TABLE student (
+    student_id   VARCHAR(12) PRIMARY KEY,
+    student_name VARCHAR(10) NOT NULL,
+    gender       VARCHAR(2),
+    department   VARCHAR(16),
+    account      VARCHAR(10),
+    password     VARCHAR(6),
+    group_no     VARCHAR(10) DEFAULT '2',   -- 组号
+    dept_no      VARCHAR(10)                -- 院系编号 A/B/C
+);
+
+CREATE TABLE course (
+    course_id      VARCHAR(8) PRIMARY KEY,
+    course_name    VARCHAR(16) NOT NULL,
+    credit         VARCHAR(2),
+    teacher_name   VARCHAR(20),
+    location       VARCHAR(20),
+    share_flag     CHAR(1),
+    class_hours    VARCHAR(10),               -- 理论学时
+    practice_hours VARCHAR(10),               -- 实践学时
+    group_no       VARCHAR(10) DEFAULT '2',
+    dept_no        VARCHAR(10)
+);
+
+CREATE TABLE sc (
+    course_id  VARCHAR(8),
+    student_id VARCHAR(12),
+    score      VARCHAR(3),
+    group_no   VARCHAR(10) DEFAULT '2',
+    dept_no    VARCHAR(10),
+    PRIMARY KEY (course_id, student_id)
+);
+```
+
+**数据字段映射规则：**
+
+| hw4 字段 | 学院 A 源字段 | 学院 B 源字段 | 学院 C 源字段 |
+|----------|-------------|-------------|-------------|
+| student_id | sid | sid | sid |
+| student_name | sname | sname | sname |
+| gender | sex | gender | sex |
+| department | dept | major_name | major_name |
+| account | sid（同 student_id） | sid | sid |
+| password | password | passwd | password |
+| course_id | cid | cno | cid |
+| course_name | cname | ctitle | cname |
+| credit | credit | credit_num | credit |
+| teacher_name | teacher | instructor | teacher |
+| location | room | classroom | room |
+| share_flag | shareFlag | share_flag | is_shared |
+
+所有记录 `group_no = '2'`，各学院 `dept_no` 对应 `'A'`/`'B'`/`'C'`。
+
+**生成与上载脚本：**
+- `generate_hw4_data.py` — 数据生成脚本（含所有课程定义、学生姓名库、选课策略）
+- `upload_hw4.sql` — 生成的完整 SQL 文件（可用于重新导入）
 
 ---
 
@@ -1099,6 +1180,25 @@ Oracle 容器使用 `AL32UTF8` 字符集，JDBC URL 为 `jdbc:oracle:thin:@local
 | 选课密度 | 6.0（高密度，CS 学生选课积极） | 3.0（低密度，经管学生选课精简） | 6.0（高密度，工程学生选课饱满） |
 | 学生规模 | 60 人，6 专业 × 10 人 | 55 人，5 专业 × 11 人 | 65 人，5 专业 × 13 人 |
 
+### hw4 数据上载（2026-06-05）
+
+按助教要求完成组号 2 的数据上传至 `10.60.254.44:3306/hw4`：
+
+| 变化 | 说明 |
+|------|------|
+| **数据翻倍** | 每院学生从 55-65 扩展到 **120 人**，课程从 52 扩展到 **104 门**，选课从 165-390 扩展到 **720-840 条** |
+| **学科扩展** | A 院新增数字媒体、生物信息、科技传播等；B 院新增社会学、心理学、新闻传播、教育等；C 院新增航空航天、生物医学、材料、环境等 |
+| **学时字段** | course 表增加 `class_hours` 和 `practice_hours`，赋值多种模式（48+16、32+16、32+32 等） |
+| **新脚本** | `generate_hw4_data.py` — 自动生成 SQL 并上传至远程服务器 |
+
+新增/修改文件：
+
+| 文件 | 说明 |
+|------|------|
+| `generate_hw4_data.py` | **新建** — hw4 数据生成与上载脚本 |
+| `upload_hw4.sql` | **新建** — 生成的完整上载 SQL（123.5 KB） |
+| `README.md` | **更新** — 数据规格、新增 hw4 章节、文件结构 |
+
 ---
 
 ## 17. 附录：文件结构
@@ -1140,6 +1240,9 @@ EduFusion-XML-Based-Integrated-Academic-Management-System/
 ├── seed-college-a.cmd             # 一键导入 College A 差异化数据（SQL Server）
 ├── seed-college-b.cmd             # 一键导入 College B 差异化数据（Oracle）
 ├── seed-college-c.cmd             # 一键导入 College C 差异化数据（MySQL）
+│
+├── generate_hw4_data.py           # hw4 远程数据库上载生成脚本
+├── upload_hw4.sql                 # 生成的 hw4 上载 SQL 文件
 │
 ├── docker/                        # Docker 异构数据库部署
 │   ├── docker-compose.yml
@@ -1186,8 +1289,8 @@ EduFusion-XML-Based-Integrated-Academic-Management-System/
 
 ---
 
-> **版本**：2.0.0  
-> **技术栈**：Java 8 + Swing + XML over HTTP (DOM4J + Xerces) + XSD + XSLT + JFreeChart 1.5.5  
-> **数据库**：SQL Server 2022 / Oracle XE 21c / MySQL 8.0（Docker 异构模式）  
+> **版本**：2.1.0  
+> **技术栈**：Java 8 + Swing + XML over HTTP (DOM4J + Xerces) + XSD + XSLT + JFreeChart 1.5.5 + Python 3  
+> **数据库**：SQL Server 2022 / Oracle XE 21c / MySQL 8.0（Docker 异构模式）+ 远程 MySQL 8.0 (hw4)  
 > **项目状态**：✅ 全部功能完成，三院客户端可同时登录操作，支持管理员模式  
 > **测试通过率**：48/48 全覆盖测试通过（含 6 种请求类型 × 3 学院 × 边界/异常场景）
