@@ -126,6 +126,65 @@ public class RemoteCollegeGateway implements CollegeGateway {
         return parseSelectionListResponse(postXml(req));
     }
 
+    // ===== Admin CRUD =====
+
+    @Override
+    public boolean addStudent(Student student) {
+        Document req = buildSimpleRequest("adminAddStudent", "id", student.getId(),
+                "name", student.getName(), "sex", student.getSex(), "major", student.getMajor());
+        return parseSimpleResult(postXml(req));
+    }
+
+    @Override
+    public boolean updateStudent(Student student) {
+        Document req = buildSimpleRequest("adminUpdateStudent", "id", student.getId(),
+                "name", student.getName(), "sex", student.getSex(), "major", student.getMajor());
+        return parseSimpleResult(postXml(req));
+    }
+
+    @Override
+    public boolean deleteStudent(String studentId) {
+        Document req = buildSimpleRequest("adminDeleteStudent", "id", studentId);
+        return parseSimpleResult(postXml(req));
+    }
+
+    @Override
+    public boolean addCourse(Course course) {
+        Document req = buildSimpleRequest("adminAddCourse", "id", course.getId(),
+                "name", course.getName(), "credit", String.valueOf(course.getCredit()),
+                "teacher", course.getTeacher(), "location", course.getLocation(),
+                "shared", String.valueOf(course.isShared()));
+        return parseSimpleResult(postXml(req));
+    }
+
+    @Override
+    public boolean updateCourse(Course course) {
+        Document req = buildSimpleRequest("adminUpdateCourse", "id", course.getId(),
+                "name", course.getName(), "credit", String.valueOf(course.getCredit()),
+                "teacher", course.getTeacher(), "location", course.getLocation(),
+                "shared", String.valueOf(course.isShared()));
+        return parseSimpleResult(postXml(req));
+    }
+
+    @Override
+    public boolean deleteCourse(String courseId) {
+        Document req = buildSimpleRequest("adminDeleteCourse", "id", courseId);
+        return parseSimpleResult(postXml(req));
+    }
+
+    @Override
+    public boolean updateScore(String studentId, String courseId, int score) {
+        Document req = buildSimpleRequest("adminUpdateScore", "studentId", studentId,
+                "courseId", courseId, "score", String.valueOf(score));
+        return parseSimpleResult(postXml(req));
+    }
+
+    @Override
+    public String getAuditLogs(int limit) {
+        Document req = buildSimpleRequest("adminAuditLog", "limit", String.valueOf(limit));
+        return parseSimpleLogResult(postXml(req));
+    }
+
     // ========== XML helpers ==========
     private Document buildSimpleRequest(String type, String... keyValues) {
         Document doc = Dom4jXmlService.createDocument("request");
@@ -181,6 +240,18 @@ public class RemoteCollegeGateway implements CollegeGateway {
         Document doc = Dom4jXmlService.parse(xml);
         return "true".equalsIgnoreCase(
                 Dom4jXmlService.childText(doc.getRootElement(), "success"));
+    }
+
+    private boolean parseSimpleResult(String xml) {
+        if (xml == null || xml.isEmpty()) return false;
+        Document doc = Dom4jXmlService.parse(xml);
+        return "true".equalsIgnoreCase(Dom4jXmlService.childText(doc.getRootElement(), "success"));
+    }
+
+    private String parseSimpleLogResult(String xml) {
+        if (xml == null || xml.isEmpty()) return "";
+        Document doc = Dom4jXmlService.parse(xml);
+        return Dom4jXmlService.childText(doc.getRootElement(), "logs");
     }
 
     private int parseIntResponse(String xml) {

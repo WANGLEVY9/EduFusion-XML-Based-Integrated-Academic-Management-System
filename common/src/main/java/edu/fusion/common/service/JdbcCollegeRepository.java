@@ -5,6 +5,7 @@ import edu.fusion.common.model.CourseHeat;
 import edu.fusion.common.model.Selection;
 import edu.fusion.common.model.Student;
 import edu.fusion.common.util.DbUtil;
+import edu.fusion.common.util.ErrorLogger;
 import edu.fusion.common.util.JdbcConfig;
 
 import java.sql.Connection;
@@ -250,6 +251,133 @@ public class JdbcCollegeRepository implements CollegeGateway {
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to list all selections for college " + collegeCode, ex);
         }
+    }
+
+    // ===== Admin CRUD: Students =====
+
+    @Override
+    public boolean addStudent(Student student) {
+        String sql = "insert into " + studentTable + " (" + studentIdColumn + ", " + studentNameColumn
+                + ", " + studentGenderColumn + ", " + studentMajorColumn + ") values (?, ?, ?, ?)";
+        try (Connection conn = DbUtil.getConnection(config); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, student.getId());
+            stmt.setString(2, student.getName());
+            stmt.setString(3, student.getSex());
+            stmt.setString(4, student.getMajor());
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            ErrorLogger.log("jdbc.addStudent", "id=" + student.getId(), ex);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateStudent(Student student) {
+        String sql = "update " + studentTable + " set " + studentNameColumn + "=?, " + studentGenderColumn
+                + "=?, " + studentMajorColumn + "=? where " + studentIdColumn + "=?";
+        try (Connection conn = DbUtil.getConnection(config); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, student.getName());
+            stmt.setString(2, student.getSex());
+            stmt.setString(3, student.getMajor());
+            stmt.setString(4, student.getId());
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            ErrorLogger.log("jdbc.updateStudent", "id=" + student.getId(), ex);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean deleteStudent(String studentId) {
+        String delSel = "delete from " + selectionTable + " where " + selectionStudentColumn + "=?";
+        String delStu = "delete from " + studentTable + " where " + studentIdColumn + "=?";
+        try (Connection conn = DbUtil.getConnection(config);
+             PreparedStatement stmt1 = conn.prepareStatement(delSel);
+             PreparedStatement stmt2 = conn.prepareStatement(delStu)) {
+            stmt1.setString(1, studentId);
+            stmt1.executeUpdate();
+            stmt2.setString(1, studentId);
+            return stmt2.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            ErrorLogger.log("jdbc.deleteStudent", "id=" + studentId, ex);
+            return false;
+        }
+    }
+
+    // ===== Admin CRUD: Courses =====
+
+    @Override
+    public boolean addCourse(Course course) {
+        String sql = "insert into " + courseTable + " (" + courseIdColumn + ", " + courseNameColumn
+                + ", " + courseCreditColumn + ", " + courseTeacherColumn + ", " + courseRoomColumn
+                + ", " + courseSharedColumn + ") values (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DbUtil.getConnection(config); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, course.getId());
+            stmt.setString(2, course.getName());
+            stmt.setInt(3, course.getCredit());
+            stmt.setString(4, course.getTeacher());
+            stmt.setString(5, course.getLocation());
+            stmt.setString(6, course.isShared() ? "1" : "0");
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            ErrorLogger.log("jdbc.addCourse", "id=" + course.getId(), ex);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateCourse(Course course) {
+        String sql = "update " + courseTable + " set " + courseNameColumn + "=?, " + courseCreditColumn
+                + "=?, " + courseTeacherColumn + "=?, " + courseRoomColumn + "=?, " + courseSharedColumn
+                + "=? where " + courseIdColumn + "=?";
+        try (Connection conn = DbUtil.getConnection(config); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, course.getName());
+            stmt.setInt(2, course.getCredit());
+            stmt.setString(3, course.getTeacher());
+            stmt.setString(4, course.getLocation());
+            stmt.setString(5, course.isShared() ? "1" : "0");
+            stmt.setString(6, course.getId());
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            ErrorLogger.log("jdbc.updateCourse", "id=" + course.getId(), ex);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean deleteCourse(String courseId) {
+        String sql = "delete from " + courseTable + " where " + courseIdColumn + "=?";
+        try (Connection conn = DbUtil.getConnection(config); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, courseId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            ErrorLogger.log("jdbc.deleteCourse", "id=" + courseId, ex);
+            return false;
+        }
+    }
+
+    // ===== Admin: Scores =====
+
+    @Override
+    public boolean updateScore(String studentId, String courseId, int score) {
+        String sql = "update " + selectionTable + " set " + selectionScoreColumn + "=? where "
+                + selectionStudentColumn + "=? and " + selectionCourseColumn + "=?";
+        try (Connection conn = DbUtil.getConnection(config); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, score);
+            stmt.setString(2, studentId);
+            stmt.setString(3, courseId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            ErrorLogger.log("jdbc.updateScore", "sid=" + studentId + " cid=" + courseId, ex);
+            return false;
+        }
+    }
+
+    // ===== Admin: Audit Logs =====
+
+    @Override
+    public String getAuditLogs(int limit) {
+        return "";
     }
 
     private String buildCourseSelectSql(String whereClause) {

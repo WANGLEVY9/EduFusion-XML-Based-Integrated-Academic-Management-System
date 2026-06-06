@@ -37,4 +37,24 @@ public interface CollegeGateway {
     List<Student> listAllStudents();
 
     List<Selection> listAllSelections();
+
+    // ===== Admin CRUD: Students =====
+    boolean addStudent(Student student);
+
+    boolean updateStudent(Student student);
+
+    boolean deleteStudent(String studentId);
+
+    // ===== Admin CRUD: Courses =====
+    boolean addCourse(Course course);
+
+    boolean updateCourse(Course course);
+
+    boolean deleteCourse(String courseId);
+
+    // ===== Admin: Scores =====
+    boolean updateScore(String studentId, String courseId, int score);
+
+    // ===== Admin: Audit Logs =====
+    String getAuditLogs(int limit);
 }

@@ -158,4 +158,78 @@ public class InMemoryCollegeStore {
     public List<Selection> listAllSelections() {
         return new ArrayList<>(selections);
     }
+
+    // ===== Admin CRUD: Students =====
+
+    public boolean addStudent(Student student) {
+        if (student == null || student.getId() == null) return false;
+        boolean exists = students.stream().anyMatch(s -> student.getId().equals(s.getId()));
+        if (exists) return false;
+        students.add(student);
+        return true;
+    }
+
+    public boolean updateStudent(Student student) {
+        if (student == null || student.getId() == null) return false;
+        for (int i = 0; i < students.size(); i++) {
+            if (students.get(i).getId().equals(student.getId())) {
+                students.set(i, student);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean deleteStudent(String studentId) {
+        if (studentId == null) return false;
+        selections.removeIf(s -> studentId.equals(s.getStudentId()));
+        return students.removeIf(s -> studentId.equals(s.getId()));
+    }
+
+    // ===== Admin CRUD: Courses =====
+
+    public boolean addCourse(Course course) {
+        if (course == null || course.getId() == null) return false;
+        boolean exists = courses.stream().anyMatch(c -> course.getId().equals(c.getId()));
+        if (exists) return false;
+        courses.add(course);
+        return true;
+    }
+
+    public boolean updateCourse(Course course) {
+        if (course == null || course.getId() == null) return false;
+        for (int i = 0; i < courses.size(); i++) {
+            if (courses.get(i).getId().equals(course.getId())) {
+                courses.set(i, course);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean deleteCourse(String courseId) {
+        if (courseId == null) return false;
+        boolean hasSelections = selections.stream().anyMatch(s -> courseId.equals(s.getCourseId()));
+        if (hasSelections) return false;
+        return courses.removeIf(c -> courseId.equals(c.getId()));
+    }
+
+    // ===== Admin: Scores =====
+
+    public boolean updateScore(String studentId, String courseId, int score) {
+        if (studentId == null || courseId == null) return false;
+        for (Selection s : selections) {
+            if (studentId.equals(s.getStudentId()) && courseId.equals(s.getCourseId())) {
+                s.setScore(score);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ===== Admin: Audit Logs =====
+
+    public String getAuditLogs(int limit) {
+        return "";
+    }
 }

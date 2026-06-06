@@ -15,6 +15,8 @@ import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
 import edu.fusion.common.model.GlobalStatistics;
 import edu.fusion.common.model.Result;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import edu.fusion.common.service.CollegeGateway;
 import edu.fusion.common.util.AuditLogger;
 import edu.fusion.common.util.Dom4jXmlService;
@@ -195,6 +197,27 @@ public class IntegrationServer {
                 return processDrop(root);
             case "statistics":
                 return processStats();
+            // ===== Admin CRUD =====
+            case "adminAddStudent":
+                return processAdminAddStudent(root);
+            case "adminUpdateStudent":
+                return processAdminUpdateStudent(root);
+            case "adminDeleteStudent":
+                return processAdminDeleteStudent(root);
+            case "adminAddCourse":
+                return processAdminAddCourse(root);
+            case "adminUpdateCourse":
+                return processAdminUpdateCourse(root);
+            case "adminDeleteCourse":
+                return processAdminDeleteCourse(root);
+            case "adminUpdateScore":
+                return processAdminUpdateScore(root);
+            case "adminListStudents":
+                return processAdminListStudents(root);
+            case "adminListSelections":
+                return processAdminListSelections(root);
+            case "adminAuditLog":
+                return processAdminAuditLog(root);
             default:
                 return Result.fail("Unsupported request type: " + type);
         }
@@ -297,6 +320,176 @@ public class IntegrationServer {
         }
 
         return Result.ok(response, "statistics done");
+    }
+
+    // ===== Admin CRUD handlers =====
+
+    private Result<Document> processAdminAddStudent(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        Student s = new Student();
+        s.setId(Dom4jXmlService.childText(root, "id"));
+        s.setName(Dom4jXmlService.childText(root, "name"));
+        s.setSex(Dom4jXmlService.childText(root, "sex"));
+        s.setMajor(Dom4jXmlService.childText(root, "major"));
+        s.setCollege(college);
+        boolean ok = gateway.addStudent(s);
+        AuditLogger.log("adminAddStudent", college, s.getId(), ok, ok ? "Added" : "Failed");
+        return buildSimpleResponse(ok, ok ? "Student added" : "Add failed");
+    }
+
+    private Result<Document> processAdminUpdateStudent(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        Student s = new Student();
+        s.setId(Dom4jXmlService.childText(root, "id"));
+        s.setName(Dom4jXmlService.childText(root, "name"));
+        s.setSex(Dom4jXmlService.childText(root, "sex"));
+        s.setMajor(Dom4jXmlService.childText(root, "major"));
+        s.setCollege(college);
+        boolean ok = gateway.updateStudent(s);
+        AuditLogger.log("adminUpdateStudent", college, s.getId(), ok, ok ? "Updated" : "Failed");
+        return buildSimpleResponse(ok, ok ? "Student updated" : "Update failed");
+    }
+
+    private Result<Document> processAdminDeleteStudent(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        String id = Dom4jXmlService.childText(root, "id");
+        boolean ok = gateway.deleteStudent(id);
+        AuditLogger.log("adminDeleteStudent", college, id, ok, ok ? "Deleted" : "Failed");
+        return buildSimpleResponse(ok, ok ? "Student deleted" : "Delete failed");
+    }
+
+    private Result<Document> processAdminAddCourse(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        Course c = new Course();
+        c.setId(Dom4jXmlService.childText(root, "id"));
+        c.setName(Dom4jXmlService.childText(root, "name"));
+        c.setCredit(Integer.parseInt(Dom4jXmlService.childText(root, "credit")));
+        c.setTeacher(Dom4jXmlService.childText(root, "teacher"));
+        c.setLocation(Dom4jXmlService.childText(root, "location"));
+        c.setCollege(college);
+        c.setShared("true".equalsIgnoreCase(Dom4jXmlService.childText(root, "shared")));
+        boolean ok = gateway.addCourse(c);
+        AuditLogger.log("adminAddCourse", college, c.getId(), ok, ok ? "Added" : "Failed");
+        return buildSimpleResponse(ok, ok ? "Course added" : "Add failed");
+    }
+
+    private Result<Document> processAdminUpdateCourse(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        Course c = new Course();
+        c.setId(Dom4jXmlService.childText(root, "id"));
+        c.setName(Dom4jXmlService.childText(root, "name"));
+        c.setCredit(Integer.parseInt(Dom4jXmlService.childText(root, "credit")));
+        c.setTeacher(Dom4jXmlService.childText(root, "teacher"));
+        c.setLocation(Dom4jXmlService.childText(root, "location"));
+        c.setCollege(college);
+        c.setShared("true".equalsIgnoreCase(Dom4jXmlService.childText(root, "shared")));
+        boolean ok = gateway.updateCourse(c);
+        AuditLogger.log("adminUpdateCourse", college, c.getId(), ok, ok ? "Updated" : "Failed");
+        return buildSimpleResponse(ok, ok ? "Course updated" : "Update failed");
+    }
+
+    private Result<Document> processAdminDeleteCourse(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        String id = Dom4jXmlService.childText(root, "id");
+        boolean ok = gateway.deleteCourse(id);
+        AuditLogger.log("adminDeleteCourse", college, id, ok, ok ? "Deleted" : "Failed");
+        return buildSimpleResponse(ok, ok ? "Course deleted" : "Delete failed");
+    }
+
+    private Result<Document> processAdminUpdateScore(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        String sid = Dom4jXmlService.childText(root, "studentId");
+        String cid = Dom4jXmlService.childText(root, "courseId");
+        int score = Integer.parseInt(Dom4jXmlService.childText(root, "score"));
+        boolean ok = gateway.updateScore(sid, cid, score);
+        AuditLogger.log("adminUpdateScore", college, sid + "/" + cid, ok, "score=" + score);
+        return buildSimpleResponse(ok, ok ? "Score updated" : "Update failed");
+    }
+
+    private Result<Document> processAdminListStudents(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        return buildStudentListXml(gateway);
+    }
+
+    private Result<Document> processAdminListSelections(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        return buildSelectionListXml(gateway);
+    }
+
+    private Result<Document> processAdminAuditLog(Element root) {
+        String college = normalizeCollegeCode(Dom4jXmlService.childText(root, "college"));
+        CollegeGateway gateway = gateways.get(college);
+        if (gateway == null) return buildSimpleResponse(false, "College not found: " + college);
+        int limit = 50;
+        String limitStr = Dom4jXmlService.childText(root, "limit");
+        if (!limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
+        String logs = gateway.getAuditLogs(limit);
+        Document doc = Dom4jXmlService.createDocument("response");
+        Element respRoot = doc.getRootElement();
+        Dom4jXmlService.addTextElement(respRoot, "success", "true");
+        Dom4jXmlService.addTextElement(respRoot, "logs", logs);
+        return Result.ok(doc, "Audit log done");
+    }
+
+    private Result<Document> buildSimpleResponse(boolean success, String message) {
+        Document doc = Dom4jXmlService.createDocument("response");
+        Element root = doc.getRootElement();
+        Dom4jXmlService.addTextElement(root, "success", String.valueOf(success));
+        Dom4jXmlService.addTextElement(root, "message", message);
+        return Result.ok(doc, message);
+    }
+
+    private Result<Document> buildStudentListXml(CollegeGateway gateway) {
+        List<Student> students = gateway.listAllStudents();
+        Document doc = Dom4jXmlService.createDocument("response");
+        Element root = doc.getRootElement();
+        Dom4jXmlService.addTextElement(root, "success", "true");
+        Dom4jXmlService.addTextElement(root, "college", gateway.getCollegeCode());
+        Element studentsEl = root.addElement("students");
+        for (Student s : students) {
+            Element se = studentsEl.addElement("student");
+            Dom4jXmlService.addTextElement(se, "id", s.getId());
+            Dom4jXmlService.addTextElement(se, "name", s.getName());
+            Dom4jXmlService.addTextElement(se, "sex", s.getSex());
+            Dom4jXmlService.addTextElement(se, "major", s.getMajor());
+            Dom4jXmlService.addTextElement(se, "college", s.getCollege());
+        }
+        return Result.ok(doc, "Student list done");
+    }
+
+    private Result<Document> buildSelectionListXml(CollegeGateway gateway) {
+        List<Selection> selections = gateway.listAllSelections();
+        Document doc = Dom4jXmlService.createDocument("response");
+        Element root = doc.getRootElement();
+        Dom4jXmlService.addTextElement(root, "success", "true");
+        Dom4jXmlService.addTextElement(root, "college", gateway.getCollegeCode());
+        Element selsEl = root.addElement("selections");
+        for (Selection s : selections) {
+            Element se = selsEl.addElement("selection");
+            Dom4jXmlService.addTextElement(se, "studentId", s.getStudentId());
+            Dom4jXmlService.addTextElement(se, "courseId", s.getCourseId());
+            Dom4jXmlService.addTextElement(se, "college", s.getOwnerCollege());
+            Dom4jXmlService.addTextElement(se, "score", s.getScore() == null ? "" : String.valueOf(s.getScore()));
+        }
+        return Result.ok(doc, "Selection list done");
     }
 
     private Result<Document> buildCourseListDocument(Result<List<Course>> result, String successMessage) {

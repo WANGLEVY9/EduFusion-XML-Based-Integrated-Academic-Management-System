@@ -158,6 +158,82 @@ public class CollegeXmlHttpServer {
                 AuditLogger.log("listAllSelections", gateway.getCollegeCode(), "college=" + gateway.getCollegeCode(), true, "List all selections");
                 return buildSelectionListXml(allSelections);
             }
+            // ===== Admin CRUD =====
+            case "adminAddStudent": {
+                Student s = new Student();
+                s.setId(Dom4jXmlService.childText(root, "id"));
+                s.setName(Dom4jXmlService.childText(root, "name"));
+                s.setSex(Dom4jXmlService.childText(root, "sex"));
+                s.setMajor(Dom4jXmlService.childText(root, "major"));
+                s.setCollege(gateway.getCollegeCode());
+                boolean ok = gateway.addStudent(s);
+                AuditLogger.log("adminAddStudent", gateway.getCollegeCode(), s.getId(), ok, ok ? "Added" : "Failed");
+                return buildSimpleResultXml(ok, ok ? "Student added" : "Add failed (duplicate id?)");
+            }
+            case "adminUpdateStudent": {
+                Student s = new Student();
+                s.setId(Dom4jXmlService.childText(root, "id"));
+                s.setName(Dom4jXmlService.childText(root, "name"));
+                s.setSex(Dom4jXmlService.childText(root, "sex"));
+                s.setMajor(Dom4jXmlService.childText(root, "major"));
+                s.setCollege(gateway.getCollegeCode());
+                boolean ok = gateway.updateStudent(s);
+                AuditLogger.log("adminUpdateStudent", gateway.getCollegeCode(), s.getId(), ok, ok ? "Updated" : "Failed");
+                return buildSimpleResultXml(ok, ok ? "Student updated" : "Update failed");
+            }
+            case "adminDeleteStudent": {
+                String sid = Dom4jXmlService.childText(root, "id");
+                boolean ok = gateway.deleteStudent(sid);
+                AuditLogger.log("adminDeleteStudent", gateway.getCollegeCode(), sid, ok, ok ? "Deleted" : "Failed");
+                return buildSimpleResultXml(ok, ok ? "Student deleted" : "Delete failed (has selections?)");
+            }
+            case "adminAddCourse": {
+                Course c = new Course();
+                c.setId(Dom4jXmlService.childText(root, "id"));
+                c.setName(Dom4jXmlService.childText(root, "name"));
+                c.setCredit(Integer.parseInt(Dom4jXmlService.childText(root, "credit")));
+                c.setTeacher(Dom4jXmlService.childText(root, "teacher"));
+                c.setLocation(Dom4jXmlService.childText(root, "location"));
+                c.setCollege(gateway.getCollegeCode());
+                c.setShared("true".equalsIgnoreCase(Dom4jXmlService.childText(root, "shared")));
+                boolean ok = gateway.addCourse(c);
+                AuditLogger.log("adminAddCourse", gateway.getCollegeCode(), c.getId(), ok, ok ? "Added" : "Failed");
+                return buildSimpleResultXml(ok, ok ? "Course added" : "Add failed");
+            }
+            case "adminUpdateCourse": {
+                Course c = new Course();
+                c.setId(Dom4jXmlService.childText(root, "id"));
+                c.setName(Dom4jXmlService.childText(root, "name"));
+                c.setCredit(Integer.parseInt(Dom4jXmlService.childText(root, "credit")));
+                c.setTeacher(Dom4jXmlService.childText(root, "teacher"));
+                c.setLocation(Dom4jXmlService.childText(root, "location"));
+                c.setCollege(gateway.getCollegeCode());
+                c.setShared("true".equalsIgnoreCase(Dom4jXmlService.childText(root, "shared")));
+                boolean ok = gateway.updateCourse(c);
+                AuditLogger.log("adminUpdateCourse", gateway.getCollegeCode(), c.getId(), ok, ok ? "Updated" : "Failed");
+                return buildSimpleResultXml(ok, ok ? "Course updated" : "Update failed");
+            }
+            case "adminDeleteCourse": {
+                String cid = Dom4jXmlService.childText(root, "id");
+                boolean ok = gateway.deleteCourse(cid);
+                AuditLogger.log("adminDeleteCourse", gateway.getCollegeCode(), cid, ok, ok ? "Deleted" : "Failed");
+                return buildSimpleResultXml(ok, ok ? "Course deleted" : "Delete failed (has selections?)");
+            }
+            case "adminUpdateScore": {
+                String sid = Dom4jXmlService.childText(root, "studentId");
+                String cid = Dom4jXmlService.childText(root, "courseId");
+                int score = Integer.parseInt(Dom4jXmlService.childText(root, "score"));
+                boolean ok = gateway.updateScore(sid, cid, score);
+                AuditLogger.log("adminUpdateScore", gateway.getCollegeCode(), sid + "/" + cid, ok, "score=" + score);
+                return buildSimpleResultXml(ok, ok ? "Score updated" : "Update failed");
+            }
+            case "adminAuditLog": {
+                int limit = 50;
+                String limitStr = Dom4jXmlService.childText(root, "limit");
+                if (!limitStr.isEmpty()) limit = Integer.parseInt(limitStr);
+                String logs = gateway.getAuditLogs(limit);
+                return buildAuditLogXml(logs);
+            }
             default:
                 return buildErrorXml("Unsupported request type: " + type);
         }
@@ -244,6 +320,14 @@ public class CollegeXmlHttpServer {
             Dom4jXmlService.addTextElement(selectionEl, "college", s.getOwnerCollege());
             Dom4jXmlService.addTextElement(selectionEl, "score", s.getScore() == null ? "" : String.valueOf(s.getScore()));
         }
+        return Dom4jXmlService.toCompactString(doc);
+    }
+
+    private String buildAuditLogXml(String logs) {
+        Document doc = Dom4jXmlService.createDocument("response");
+        Element root = doc.getRootElement();
+        Dom4jXmlService.addTextElement(root, "success", "true");
+        Dom4jXmlService.addTextElement(root, "logs", logs);
         return Dom4jXmlService.toCompactString(doc);
     }
 

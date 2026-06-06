@@ -1,6 +1,7 @@
 package edu.fusion.clientc.ui;
 
 import edu.fusion.common.model.Role;
+import edu.fusion.common.ui.AdminDashboardFrame;
 import edu.fusion.common.ui.CollegeDashboardFrame;
 import edu.fusion.serverc.service.AuthServiceC;
 
@@ -56,17 +57,23 @@ public class LoginFrameC extends JFrame {
             return;
         }
 
-        CollegeDashboardFrame dashboard = new CollegeDashboardFrame(
-                role == Role.ADMIN ? "C学院管理员端" : "C学院学生端",
-                "C",
-                "http://localhost:8080/api/xml",
-                username,
-                () -> {
-                    LoginFrameC loginFrame = new LoginFrameC();
-                    loginFrame.setVisible(true);
-                },
-                role);
-        dashboard.setVisible(true);
+        if (role == Role.ADMIN) {
+            AdminDashboardFrame dashboard = new AdminDashboardFrame(
+                    "C学院管理员端", "C", "http://localhost:8080/api/xml",
+                    username, () -> {
+                        LoginFrameC loginFrame = new LoginFrameC();
+                        loginFrame.setVisible(true);
+                    });
+            dashboard.setVisible(true);
+        } else {
+            CollegeDashboardFrame dashboard = new CollegeDashboardFrame(
+                    "C学院学生端", "C", "http://localhost:8080/api/xml",
+                    username, () -> {
+                        LoginFrameC loginFrame = new LoginFrameC();
+                        loginFrame.setVisible(true);
+                    }, role);
+            dashboard.setVisible(true);
+        }
         dispose();
     }
 }

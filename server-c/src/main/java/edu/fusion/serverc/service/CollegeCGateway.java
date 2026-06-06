@@ -111,4 +111,30 @@ public class CollegeCGateway implements CollegeGateway {
     public List<Selection> listAllSelections() {
         return REPOSITORY.listAllSelections();
     }
+
+    @Override
+    public boolean addStudent(Student student) { return REPOSITORY.addStudent(student); }
+
+    @Override
+    public boolean updateStudent(Student student) { return REPOSITORY.updateStudent(student); }
+
+    @Override
+    public boolean deleteStudent(String studentId) { return REPOSITORY.deleteStudent(studentId); }
+
+    @Override
+    public boolean addCourse(Course course) { return REPOSITORY.addCourse(course); }
+
+    @Override
+    public boolean updateCourse(Course course) { return REPOSITORY.updateCourse(course); }
+
+    @Override
+    public boolean deleteCourse(String courseId) { return REPOSITORY.deleteCourse(courseId); }
+
+    @Override
+    public boolean updateScore(String studentId, String courseId, int score) {
+        return REPOSITORY.updateScore(studentId, courseId, score);
+    }
+
+    @Override
+    public String getAuditLogs(int limit) { return REPOSITORY.getAuditLogs(limit); }
 }
