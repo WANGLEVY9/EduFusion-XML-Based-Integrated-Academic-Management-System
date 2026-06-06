@@ -3,6 +3,8 @@ package edu.fusion.integration.service;
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
 import edu.fusion.common.model.GlobalStatistics;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import edu.fusion.common.model.Result;
 import edu.fusion.common.service.CollegeGateway;
 import org.junit.jupiter.api.BeforeEach;
@@ -253,6 +255,36 @@ class IntegrationServerTest {
             }
             return result.subList(0, Math.min(topN, result.size()));
         }
+
+        @Override
+        public List<Student> listAllStudents() { return Collections.emptyList(); }
+
+        @Override
+        public List<Selection> listAllSelections() { return Collections.emptyList(); }
+
+        @Override
+        public boolean addStudent(Student student) { return true; }
+
+        @Override
+        public boolean updateStudent(Student student) { return true; }
+
+        @Override
+        public boolean deleteStudent(String studentId) { return true; }
+
+        @Override
+        public boolean addCourse(Course course) { return true; }
+
+        @Override
+        public boolean updateCourse(Course course) { return true; }
+
+        @Override
+        public boolean deleteCourse(String courseId) { return true; }
+
+        @Override
+        public boolean updateScore(String studentId, String courseId, int score) { return true; }
+
+        @Override
+        public String getAuditLogs(int limit) { return ""; }
 
         private boolean existsCourse(String courseId) {
             for (Course course : allCourses) {

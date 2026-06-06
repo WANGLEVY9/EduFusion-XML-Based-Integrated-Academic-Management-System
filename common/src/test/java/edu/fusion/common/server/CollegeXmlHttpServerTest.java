@@ -2,6 +2,8 @@ package edu.fusion.common.server;
 
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import edu.fusion.common.service.CollegeGateway;
 import edu.fusion.common.service.RemoteCollegeGateway;
 import org.junit.jupiter.api.AfterEach;
@@ -227,5 +229,35 @@ class CollegeXmlHttpServerTest {
             h2.setSelectedCount(3);
             return Arrays.asList(h1, h2);
         }
+
+        @Override
+        public List<Student> listAllStudents() { return Collections.emptyList(); }
+
+        @Override
+        public List<Selection> listAllSelections() { return Collections.emptyList(); }
+
+        @Override
+        public boolean addStudent(Student student) { return true; }
+
+        @Override
+        public boolean updateStudent(Student student) { return true; }
+
+        @Override
+        public boolean deleteStudent(String studentId) { return true; }
+
+        @Override
+        public boolean addCourse(Course course) { return true; }
+
+        @Override
+        public boolean updateCourse(Course course) { return true; }
+
+        @Override
+        public boolean deleteCourse(String courseId) { return true; }
+
+        @Override
+        public boolean updateScore(String studentId, String courseId, int score) { return true; }
+
+        @Override
+        public String getAuditLogs(int limit) { return ""; }
     }
 }

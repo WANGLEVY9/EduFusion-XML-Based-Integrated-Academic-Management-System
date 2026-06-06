@@ -1,0 +1,106 @@
+<h2>管理员模式全面升级 — 功能规划</h2>
+<p class="subtitle">从前后端操作逻辑和人机交互角度，全面升级管理员系统</p>
+
+<div class="section">
+  <h3>当前系统架构</h3>
+  <div class="mockup" style="margin-top: 8px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 8px;">
+      <div style="background: #f0f2f5; padding: 12px; border-radius: 8px; text-align: center;">
+        <div style="font-weight: bold; color: #2980b9;">客户端 (Java Swing)</div>
+        <div style="font-size: 12px; color: #666;">LoginFrame → CollegeDashboardFrame</div>
+        <div style="font-size: 11px; color: #999; margin-top: 4px;">学生/管理员共用同一界面</div>
+      </div>
+      <div style="background: #f0f2f5; padding: 12px; border-radius: 8px; text-align: center;">
+        <div style="font-weight: bold; color: #27ae60;">集成服务器 (IntegrationServer)</div>
+        <div style="font-size: 12px; color: #666;">聚合三学院数据 · XML API</div>
+        <div style="font-size: 11px; color: #999; margin-top: 4px;">7 种请求类型</div>
+      </div>
+      <div style="background: #f0f2f5; padding: 12px; border-radius: 8px; text-align: center;">
+        <div style="font-weight: bold; color: #e74c3c;">学院服务器 A/B/C</div>
+        <div style="font-size: 12px; color: #666;">CollegeXmlHttpServer</div>
+        <div style="font-size: 11px; color: #999; margin-top: 4px;">各自数据库/内存存储</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>当前管理员模式的局限</h3>
+  <div class="pros-cons">
+    <div class="cons">
+      <ul>
+        <li><strong>界面无差别</strong> — 管理员看到的是完全相同的课程查询/选课界面</li>
+        <li><strong>缺少管理面板</strong> — 无学生管理、课程CRUD、成绩管理等核心功能</li>
+        <li><strong>权限差异小</strong> — 仅多3张管理图表 + 不同标题</li>
+        <li><strong>无跨学院操作</strong> — 无法查看或管理其他学院数据</li>
+        <li><strong>无审计日志</strong> — AuditLogger有日志但无浏览界面</li>
+        <li><strong>无成绩管理</strong> — Selection.score 字段无操作入口</li>
+        <li><strong>无教师管理</strong> — 教师数据仅作为课程属性存在</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>建议升级的功能模块</h3>
+  <div class="options" data-multiselect>
+    <div class="option" data-choice="dashboard" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>管理员专属面板</h3>
+        <p>系统概览大盘，显示三学院实时状态、今日操作、系统健康度</p>
+      </div>
+    </div>
+    <div class="option" data-choice="student-mgmt" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>学生管理</h3>
+        <p>查看/添加/修改/删除学生信息，支持跨学院浏览</p>
+      </div>
+    </div>
+    <div class="option" data-choice="course-mgmt" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>课程管理 (CRUD)</h3>
+        <p>课程的增删改查、共享状态管理、跨学院课程操作</p>
+      </div>
+    </div>
+    <div class="option" data-choice="score-mgmt" onclick="toggleSelect(this)">
+      <div class="letter">D</div>
+      <div class="content">
+        <h3>成绩管理</h3>
+        <p>录入/修改/统计学生成绩，成绩分布分析</p>
+      </div>
+    </div>
+    <div class="option" data-choice="selection-mgmt" onclick="toggleSelect(this)">
+      <div class="letter">E</div>
+      <div class="content">
+        <h3>选课管理</h3>
+        <p>查看所有选课记录、退课操作、选课统计分析</p>
+      </div>
+    </div>
+    <div class="option" data-choice="audit-log" onclick="toggleSelect(this)">
+      <div class="letter">F</div>
+      <div class="content">
+        <h3>审计日志</h3>
+        <p>浏览所有操作日志，按时间/操作/用户筛选</p>
+      </div>
+    </div>
+    <div class="option" data-choice="user-mgmt" onclick="toggleSelect(this)">
+      <div class="letter">G</div>
+      <div class="content">
+        <h3>用户与权限管理</h3>
+        <p>管理员账号管理、权限分配、教师账号管理</p>
+      </div>
+    </div>
+    <div class="option" data-choice="cross-college" onclick="toggleSelect(this)">
+      <div class="letter">H</div>
+      <div class="content">
+        <h3>跨学院数据操作</h3>
+        <p>跨学院数据同步、全局配置、数据导入导出</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top: 20px; color: #888;">请在浏览器中选择你认为最重要的功能模块（可多选），然后在终端告诉我你的想法。也可以补充其他需求。</p>

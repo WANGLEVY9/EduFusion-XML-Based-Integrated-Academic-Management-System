@@ -76,7 +76,7 @@ public class CourseManagementPanel extends JPanel {
     }
 
     private void loadData() {
-        String xml = parent.buildRequest("queryCourses", "college", parent.getCollegeCode());
+        String xml = parent.buildRequest("queryCourses");
         String response = parent.sendRequest(xml);
         if (response == null) return;
         tableModel.setRowCount(0);

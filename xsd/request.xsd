@@ -20,6 +20,16 @@
             <xs:enumeration value="statistics"/>
             <xs:enumeration value="queryCourses"/>
             <xs:enumeration value="myCourses"/>
+            <xs:enumeration value="adminListStudents"/>
+            <xs:enumeration value="adminListSelections"/>
+            <xs:enumeration value="adminAddStudent"/>
+            <xs:enumeration value="adminUpdateStudent"/>
+            <xs:enumeration value="adminDeleteStudent"/>
+            <xs:enumeration value="adminAddCourse"/>
+            <xs:enumeration value="adminUpdateCourse"/>
+            <xs:enumeration value="adminDeleteCourse"/>
+            <xs:enumeration value="adminUpdateScore"/>
+            <xs:enumeration value="adminAuditLog"/>
         </xs:restriction>
     </xs:simpleType>
 </xs:schema>

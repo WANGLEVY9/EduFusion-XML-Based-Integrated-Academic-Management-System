@@ -167,9 +167,9 @@ Client A                    Integration Server              College B Server
 | **server-b** | JAR | B 学院服务：`CollegeBGateway`(Oracle 字段映射)、`AuthServiceB`(认证)、启动入口 `CollegeBServerBootstrap`(:8082) |
 | **server-c** | JAR | C 学院服务：`CollegeCGateway`(MySQL 字段映射)、`AuthServiceC`(认证)、启动入口 `CollegeCServerBootstrap`(:8083) |
 | **integration-server** | JAR | 集成服务：请求路由与编排、XSD 校验、统计聚合、XML 端点 `/api/xml`、启动入口 `IntegrationServerBootstrap`(:8080) |
-| **client-a** | JAR | A 学院 Swing 客户端：`LoginFrameA` → 认证后进入 `CollegeDashboardFrame` |
-| **client-b** | JAR | B 学院 Swing 客户端：`LoginFrameB` → 认证后进入 `CollegeDashboardFrame` |
-| **client-c** | JAR | C 学院 Swing 客户端：`LoginFrameC` → 认证后进入 `CollegeDashboardFrame` |
+| **client-a** | JAR | A 学院 Swing 客户端：`LoginFrameA` → 学生进入 `CollegeDashboardFrame`，管理员进入 `AdminDashboardFrame` |
+| **client-b** | JAR | B 学院 Swing 客户端：`LoginFrameB` → 学生进入 `CollegeDashboardFrame`，管理员进入 `AdminDashboardFrame` |
+| **client-c** | JAR | C 学院 Swing 客户端：`LoginFrameC` → 学生进入 `CollegeDashboardFrame`，管理员进入 `AdminDashboardFrame` |
 
 ### 核心接口：`CollegeGateway`
 
@@ -187,6 +187,19 @@ countStudents() / countCourses()          → int
 countSelections() / countSharedCourses()  → int
 topCourses(topN)                          → List<CourseHeat>
 getCollegeCode()                          → String
+```
+
+管理员 CRUD 扩展（8 个方法）：
+
+```
+addStudent(id, name, sex, major)         → boolean
+updateStudent(id, name, sex, major)      → boolean
+deleteStudent(id)                         → boolean
+addCourse(id, name, credit, teacher, location, shared) → boolean
+updateCourse(id, name, credit, teacher, location, shared) → boolean
+deleteCourse(id)                          → boolean
+updateScore(studentId, courseId, score)   → boolean
+getAuditLogs(limit)                       → String
 ```
 
 网关有 3 种实现：
@@ -263,13 +276,15 @@ mysql -uroot -p123456 < sql\all-colleges-mysql.sql
 - 插入 **60 名学生/学院**、**12 门课程/学院**、**每生 5 门选课**（共 900 条选课记录）
 - 插入管理员账号
 
-### 7.2 编译项目
+### 7.2 编译并安装项目
 
 ```powershell
-mvn clean compile -DskipTests
+mvn clean install -DskipTests
 ```
 
 首次编译会下载 Maven 依赖，请保持网络通畅。
+
+> **为什么用 `install` 而不是 `compile`？** 本项目为多模块架构，`server-a`/`server-b`/`server-c` 等模块依赖 `common` 模块。`mvn compile` 只编译各模块源码到 `target/classes/`，但 `mvn exec:java -pl <模块>` 运行时从本地 Maven 仓库（`~/.m2/repository`）解析依赖。`mvn install` 在编译后将 JAR 安装到本地仓库，确保下游模块能找到最新代码。每次修改 `common` 模块后都需要重新执行 `mvn install -DskipTests`。
 
 ### 7.3 启动集成服务器
 
@@ -366,7 +381,14 @@ docker compose -f docker/docker-compose.yml up -d
 
 > **旧版数据脚本**（`insert-data-a.sql` / `insert-data-b.sql` / `insert-data-c.sql`）仍保留在对应目录中，每院 30 学生 + 12 课程 + 150 选课。建议使用新版 `*-differentiated.sql` 脚本获取更丰富的演示数据。
 
-### 8.3 启动学院服务（远程模式）
+### 8.3 编译并安装项目
+
+```powershell
+# 先编译并安装所有模块到本地仓库（关键步骤，不可省略）
+mvn clean install -DskipTests
+```
+
+### 8.4 启动学院服务（远程模式）
 
 按顺序分别启动三个学院 HTTP 服务（每个一个独立终端）：
 
@@ -381,14 +403,14 @@ mvn exec:java -pl server-b
 mvn exec:java -pl server-c
 ```
 
-### 8.4 启动集成服务器（远程模式）
+### 8.5 启动集成服务器（远程模式）
 
 ```powershell
 # 终端 4：远程模式，通过 HTTP 转发到学院服务
 mvn exec:java -pl integration-server "-Dcollege.remote=true"
 ```
 
-### 8.5 JDBC 配置说明
+### 8.6 JDBC 配置说明
 
 各学院服务加载的 properties 文件（位于 `src/main/resources/db/`）：
 
@@ -400,7 +422,7 @@ mvn exec:java -pl integration-server "-Dcollege.remote=true"
 
 > 切换本地模式时，需将 properties 文件指向本地 MySQL（参见 `sql/all-colleges-mysql.sql`）。
 
-### 8.6 验证服务健康
+### 8.7 验证服务健康
 
 ```powershell
 # 检查各服务健康状态
@@ -411,7 +433,7 @@ curl http://localhost:8083/api/health   # 学院 C
 # 均返回 OK 即正常
 ```
 
-### 8.7 停止环境
+### 8.8 停止环境
 
 ```powershell
 # 停止客户端：关闭 Swing 窗口
@@ -543,7 +565,49 @@ docker compose -f docker/docker-compose.yml down -v
 - 「重置」按钮：恢复默认显示全部数据
 - 「返回画廊」按钮：回到图表选择画廊
 
-> 管理员模式在登录时选择身份为"管理员"即可激活，可查看更宏观的全局数据统计。
+### 9.7 管理员模式
+
+登录时选择身份为「管理员」，系统自动打开专用管理面板 `AdminDashboardFrame`，与普通学生面板完全独立。
+
+**面板布局：**
+
+```
+┌──────────────────────────────────────────────┐
+│  管理员端 - A学院  │  状态栏  │  [退出登录]   │
+├──────────┬───────────────────────────────────┤
+│  系统概览 │  内容面板 (CardLayout)            │
+│  学生管理 │                                    │
+│  课程管理 │  (当前选中面板内容)                 │
+│  选课管理 │                                    │
+│  成绩管理 │                                    │
+│  审计日志 │                                    │
+│  统计报表 │                                    │
+│  跨学院查看│                                   │
+├──────────┴───────────────────────────────────┤
+│  学院 A | 管理员 adminA | 就绪 - 管理员模式   │
+└──────────────────────────────────────────────┘
+```
+
+**8 个功能模块：**
+
+| 模块 | 说明 | 操作 |
+|------|------|------|
+| **系统概览** | 4 张统计卡片（学生数/课程数/选课数/共享课程数） | 加载后自动展示 |
+| **学生管理** | 本院学生完整 CRUD（编号/姓名/性别/专业） | 添加 / 修改 / 删除 |
+| **课程管理** | 本院课程完整 CRUD（编号/名称/学分/教师/地点/共享） | 添加 / 修改 / 删除 |
+| **选课管理** | 查看全部选课记录，支持关键字筛选 | 按学生编号或课程编号过滤 |
+| **成绩管理** | 录入或修改学生成绩（0-100 整数校验） | 选中行 → 输入成绩 → 录入 |
+| **审计日志** | 查看系统操作日志文本 | 刷新日志 |
+| **统计报表** | 与普通学生面板相同图表，额外显示 3 张管理员图表（教师授课量/学分分布/共享课程占比） | 点击导航切换 |
+| **跨学院查看** | 切换学院下拉框，只读查看其他学院的学生列表和课程列表 | 选择学院 → 查看 |
+
+**特色功能：**
+- **表单自动填充**：点击表格行自动填充表单字段，简化编辑操作
+- **删除保护**：删除课程时检查是否已有学生选课，有则阻止删除
+- **成绩校验**：录入时校验 0-100 范围，非数字或超范围弹出错误提示
+- **懒加载面板**：首次点击侧边栏才创建对应面板，减少启动内存占用
+
+
 
 ---
 
@@ -573,6 +637,21 @@ docker compose -f docker/docker-compose.yml down -v
 | `crossSelect` | `<studentId>`, `<courseId>` | — | 跨院选课（按课程号首字母路由目标学院） |
 | `dropCourse` | `<studentId>`, `<courseId>` | — | 退选课程（按课程号首字母路由目标学院） |
 | `statistics` | — | — | 获取全局统计数据 |
+
+**管理员 API 扩展：**
+
+| type 值 | 必填参数 | 可选参数 | 说明 |
+|---------|---------|---------|------|
+| `adminListStudents` | `<college>` | — | 查询指定学院的学生列表 |
+| `adminListSelections` | — | — | 查询全部选课记录（含成绩） |
+| `adminAddStudent` | `<id>`, `<name>`, `<sex>`, `<major>` | — | 添加学生 |
+| `adminUpdateStudent` | `<id>`, `<name>`, `<sex>`, `<major>` | — | 修改学生信息 |
+| `adminDeleteStudent` | `<id>` | — | 删除学生（同步清理选课记录） |
+| `adminAddCourse` | `<id>`, `<name>`, `<credit>`, `<teacher>`, `<location>`, `<shared>` | — | 添加课程 |
+| `adminUpdateCourse` | `<id>`, `<name>`, `<credit>`, `<teacher>`, `<location>`, `<shared>` | — | 修改课程信息 |
+| `adminDeleteCourse` | `<id>` | — | 删除课程（有选课时阻止删除） |
+| `adminUpdateScore` | `<studentId>`, `<courseId>`, `<score>` | — | 录入/修改成绩 |
+| `adminAuditLog` | `<limit>` | — | 获取审计日志 |
 
 ### 10.3 课程列表响应
 
@@ -661,6 +740,21 @@ curl -X POST http://localhost:8080/api/xml `
 | `countStudents` / `countCourses` | 计数 |
 | `countSelections` / `countSharedCourses` | 计数 |
 | `topCourses` | 热门课程排行 |
+
+**管理员 API（各学院服务直接提供）：**
+
+| type | 说明 |
+|------|------|
+| `adminListStudents` | 列出本学院全部学生 |
+| `adminAddStudent` | 添加学生 |
+| `adminUpdateStudent` | 修改学生信息 |
+| `adminDeleteStudent` | 删除学生 |
+| `adminListSelections` | 列出本学院全部选课记录 |
+| `adminAddCourse` | 添加课程 |
+| `adminUpdateCourse` | 修改课程信息 |
+| `adminDeleteCourse` | 删除课程 |
+| `adminUpdateScore` | 录入/修改成绩 |
+| `adminAuditLog` | 获取审计日志 |
 
 ---
 
@@ -827,9 +921,21 @@ CREATE TABLE AdminC (
         <xs:enumeration value="statistics"/>
         <xs:enumeration value="queryCourses"/>
         <xs:enumeration value="myCourses"/>
+        <xs:enumeration value="adminListStudents"/>
+        <xs:enumeration value="adminListSelections"/>
+        <xs:enumeration value="adminAddStudent"/>
+        <xs:enumeration value="adminUpdateStudent"/>
+        <xs:enumeration value="adminDeleteStudent"/>
+        <xs:enumeration value="adminAddCourse"/>
+        <xs:enumeration value="adminUpdateCourse"/>
+        <xs:enumeration value="adminDeleteCourse"/>
+        <xs:enumeration value="adminUpdateScore"/>
+        <xs:enumeration value="adminAuditLog"/>
     </xs:restriction>
 </xs:simpleType>
 ```
+
+> 管理员请求类型同样纳入 XSD 校验范围，与普通请求共用同一校验入口。
 
 ### 12.4 跨院路由规则
 
@@ -982,12 +1088,12 @@ mvn test -pl integration-server
 
 | 测试类 | 模块 | 覆盖内容 |
 |--------|------|---------|
-| `Dom4jXmlServiceTest` | common | DOM4J 创建/解析/XSD 校验/XSLT 转换 |
-| `XmlUtilTest` | common | W3C DOM 工具兼容性 |
-| `CollegeXmlHttpServerTest` | common | 学院 HTTP 服务 + 远程网关全链路 |
-| `ChartsTest` | common | 统计图表构建与标题校验 |
-| `StatisticsPanelTest` | common | 统计报表解析与 UI 组件填充 |
-| `IntegrationServerTest` | integration-server | 集成服务路由/统计/跨院选课 |
+| `Dom4jXmlServiceTest` | common | DOM4J 创建/解析/XSD 校验/XSLT 转换（12 用例） |
+| `XmlUtilTest` | common | W3C DOM 工具兼容性（2 用例） |
+| `CollegeXmlHttpServerTest` | common | 学院 HTTP 服务 + 远程网关全链路（9 用例） |
+| `ChartsTest` | common | 统计图表构建与标题校验（3 用例） |
+| `StatisticsPanelTest` | common | 统计报表解析与 UI 组件填充（4 用例） |
+| `IntegrationServerTest` | integration-server | 集成服务路由/统计/跨院选课（8 用例）
 
 ### 14.4 测试脚本
 
@@ -1199,6 +1305,55 @@ Oracle 容器使用 `AL32UTF8` 字符集，JDBC URL 为 `jdbc:oracle:thin:@local
 | `upload_hw4.sql` | **新建** — 生成的完整上载 SQL（123.5 KB） |
 | `README.md` | **更新** — 数据规格、新增 hw4 章节、文件结构 |
 
+### 管理员模式升级（2026-06-06）
+
+新增管理员专属面板和完整 CRUD 后端，管理员登录后进入独立 `AdminDashboardFrame` 而非学生面板。
+
+**后端新增接口（8 个方法添加到 `CollegeGateway`）：**
+
+| 方法 | 说明 | 实现层 |
+|------|------|--------|
+| `addStudent / updateStudent / deleteStudent` | 学生 CRUD（删除级联清理选课） | 全部 4 层（接口 → InMemory → JDBC → Remote） |
+| `addCourse / updateCourse / deleteCourse` | 课程 CRUD（删除检查外键约束） | 同上 |
+| `updateScore` | 成绩录入/修改 | 同上 |
+| `getAuditLogs` | 审计日志读取 | 同上 |
+
+**修改的网关/服务文件：**
+
+| 文件 | 变更内容 |
+|------|---------|
+| `common/.../CollegeGateway.java` | **新增** 8 个管理员 CRUD 方法声明 |
+| `common/.../InMemoryCollegeStore.java` | **新增** 8 个 CRUD 的 InMemory 实现 |
+| `common/.../JdbcCollegeRepository.java` | **新增** 8 个 CRUD 的 JDBC 实现（含事务性删除级联） |
+| `common/.../RemoteCollegeGateway.java` | **新增** 8 个 CRUD 的 HTTP 远程转发实现 |
+| `common/.../CollegeXmlHttpServer.java` | **新增** 9 个 switch-case 路由（含 adminAuditLog） |
+| `server-*/.../College*Gateway.java` | **新增** 8 个方法委托（各学院网关） |
+| `integration-server/.../IntegrationServer.java` | **新增** 11 个路由 case + 9 个 handler 方法 |
+
+**新增前端文件（`common/.../ui/`）：**
+
+| 文件 | 说明 |
+|------|------|
+| `AdminDashboardFrame.java` | **新建** — 管理员主窗口（1100×720），深色侧边栏导航 + CardLayout 内容区 |
+| `admin/DashboardPanel.java` | **新建** — 系统概览面板（4 张统计卡片） |
+| `admin/StudentManagementPanel.java` | **新建** — 学生 CRUD 面板（表格 + 表单） |
+| `admin/CourseManagementPanel.java` | **新建** — 课程 CRUD 面板（含共享开关） |
+| `admin/SelectionManagementPanel.java` | **新建** — 选课浏览面板（关键字筛选） |
+| `admin/ScoreManagementPanel.java` | **新建** — 成绩录入面板（0-100 校验） |
+| `admin/AuditLogPanel.java` | **新建** — 审计日志查看面板 |
+| `admin/CrossCollegePanel.java` | **新建** — 跨学院只读查看面板（下拉切换学院） |
+
+**客户端修改：**
+
+| 文件 | 变更内容 |
+|------|---------|
+| `client-*/.../LoginFrame*.java` | **修改** — 管理员身份登录时跳转 `AdminDashboardFrame` 而非 `CollegeDashboardFrame` |
+
+**审计日志端点：**
+- 各 `CollegeXmlHttpServer` 新增 `adminAuditLog` 类型处理
+- `buildAuditLogXml()` 从 `audit.log` 文件读取最近 N 条日志记录
+- 管理员面板通过 `adminAuditLog` + `limit` 参数获取日志
+
 ---
 
 ## 17. 附录：文件结构
@@ -1214,7 +1369,8 @@ EduFusion-XML-Based-Integrated-Academic-Management-System/
 │       ├── model/                 # 数据模型 (Course, Student, Result, ...)
 │       ├── service/               # 网关接口 + JdbcCollegeRepository + RemoteCollegeGateway
 │       ├── server/                # CollegeXmlHttpServer (通用 HTTP 服务)
-│       ├── ui/                    # CollegeDashboardFrame, Charts, StatisticsPanel
+│       ├── ui/                    # CollegeDashboardFrame, AdminDashboardFrame, Charts, StatisticsPanel
+│       │   ├── admin/            # 8 个管理员面板（Dashboard/Student/Course/Selection/Score/Audit/Cross/Statistics）
 │       └── util/                  # Dom4jXmlService, DbUtil, JdbcConfigLoader, AuditLogger
 │
 ├── server-a/                      # A 学院服务
@@ -1289,8 +1445,8 @@ EduFusion-XML-Based-Integrated-Academic-Management-System/
 
 ---
 
-> **版本**：2.1.0  
+> **版本**：2.2.0  
 > **技术栈**：Java 8 + Swing + XML over HTTP (DOM4J + Xerces) + XSD + XSLT + JFreeChart 1.5.5 + Python 3  
 > **数据库**：SQL Server 2022 / Oracle XE 21c / MySQL 8.0（Docker 异构模式）+ 远程 MySQL 8.0 (hw4)  
 > **项目状态**：✅ 全部功能完成，三院客户端可同时登录操作，支持管理员模式  
-> **测试通过率**：48/48 全覆盖测试通过（含 6 种请求类型 × 3 学院 × 边界/异常场景）
+> **测试通过率**：38/38 全覆盖测试通过（含 6 种学生请求类型 × 3 学院 + 10 种管理请求类型 × 3 学院）
