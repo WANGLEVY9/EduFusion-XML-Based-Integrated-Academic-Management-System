@@ -2,6 +2,8 @@ package edu.fusion.common.service;
 
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import edu.fusion.common.util.DbUtil;
 import edu.fusion.common.util.JdbcConfig;
 
@@ -35,6 +37,9 @@ public class JdbcCollegeRepository implements CollegeGateway {
     private final String selectionStudentColumn;
     private final String selectionCourseColumn;
     private final String selectionScoreColumn;
+    private final String studentNameColumn;
+    private final String studentGenderColumn;
+    private final String studentMajorColumn;
 
     public JdbcCollegeRepository(String collegeCode,
             JdbcConfig config,
@@ -55,7 +60,10 @@ public class JdbcCollegeRepository implements CollegeGateway {
             String selectionTable,
             String selectionStudentColumn,
             String selectionCourseColumn,
-            String selectionScoreColumn) {
+            String selectionScoreColumn,
+            String studentNameColumn,
+            String studentGenderColumn,
+            String studentMajorColumn) {
         this.collegeCode = collegeCode;
         this.config = config;
         this.studentTable = studentTable;
@@ -76,6 +84,9 @@ public class JdbcCollegeRepository implements CollegeGateway {
         this.selectionStudentColumn = selectionStudentColumn;
         this.selectionCourseColumn = selectionCourseColumn;
         this.selectionScoreColumn = selectionScoreColumn;
+        this.studentNameColumn = studentNameColumn;
+        this.studentGenderColumn = studentGenderColumn;
+        this.studentMajorColumn = studentMajorColumn;
     }
 
     @Override
@@ -192,6 +203,52 @@ public class JdbcCollegeRepository implements CollegeGateway {
             return result;
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to query top courses for college " + collegeCode, ex);
+        }
+    }
+
+    @Override
+    public List<Student> listAllStudents() {
+        String sql = "select " + studentIdColumn + ", " + studentNameColumn + ", " + studentGenderColumn + ", " + studentMajorColumn
+                + " from " + studentTable + " order by " + studentIdColumn;
+        List<Student> result = new ArrayList<>();
+        try (Connection connection = DbUtil.getConnection(config); PreparedStatement statement = connection.prepareStatement(sql)) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    Student student = new Student();
+                    student.setId(resultSet.getString(1));
+                    student.setName(resultSet.getString(2));
+                    student.setSex(resultSet.getString(3));
+                    student.setMajor(resultSet.getString(4));
+                    student.setCollege(collegeCode);
+                    result.add(student);
+                }
+            }
+            return result;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to list all students for college " + collegeCode, ex);
+        }
+    }
+
+    @Override
+    public List<Selection> listAllSelections() {
+        String sql = "select " + selectionStudentColumn + ", " + selectionCourseColumn + ", " + selectionScoreColumn
+                + " from " + selectionTable + " order by " + selectionStudentColumn + ", " + selectionCourseColumn;
+        List<Selection> result = new ArrayList<>();
+        try (Connection connection = DbUtil.getConnection(config); PreparedStatement statement = connection.prepareStatement(sql)) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    Selection selection = new Selection();
+                    selection.setStudentId(resultSet.getString(1));
+                    selection.setCourseId(resultSet.getString(2));
+                    Object scoreObj = resultSet.getObject(3);
+                    selection.setScore(scoreObj != null ? ((Number) scoreObj).intValue() : null);
+                    selection.setOwnerCollege(collegeCode);
+                    result.add(selection);
+                }
+            }
+            return result;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to list all selections for college " + collegeCode, ex);
         }
     }
 

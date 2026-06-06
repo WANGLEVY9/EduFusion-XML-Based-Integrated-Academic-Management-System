@@ -2,6 +2,8 @@ package edu.fusion.common.service;
 
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import edu.fusion.common.util.Dom4jXmlService;
 import edu.fusion.common.util.ErrorLogger;
 import org.dom4j.Document;
@@ -110,6 +112,18 @@ public class RemoteCollegeGateway implements CollegeGateway {
     public List<CourseHeat> topCourses(int topN) {
         Document req = buildSimpleRequest("topCourses", "topN", String.valueOf(topN));
         return parseCourseHeatResponse(postXml(req));
+    }
+
+    @Override
+    public List<Student> listAllStudents() {
+        Document req = buildSimpleRequest("listAllStudents");
+        return parseStudentListResponse(postXml(req));
+    }
+
+    @Override
+    public List<Selection> listAllSelections() {
+        Document req = buildSimpleRequest("listAllSelections");
+        return parseSelectionListResponse(postXml(req));
     }
 
     // ========== XML helpers ==========
@@ -227,6 +241,56 @@ public class RemoteCollegeGateway implements CollegeGateway {
             heats.add(h);
         }
         return heats;
+    }
+
+    private List<Student> parseStudentListResponse(String xml) {
+        List<Student> students = new ArrayList<>();
+        if (xml == null || xml.isEmpty()) {
+            return students;
+        }
+        Document doc = Dom4jXmlService.parse(xml);
+        Element root = doc.getRootElement();
+        Element studentsEl = root.element("students");
+        if (studentsEl == null) {
+            return students;
+        }
+        @SuppressWarnings("unchecked")
+        List<Element> studentElements = studentsEl.elements("student");
+        for (Element el : studentElements) {
+            Student s = new Student();
+            s.setId(textOf(el, "id"));
+            s.setName(textOf(el, "name"));
+            s.setSex(textOf(el, "sex"));
+            s.setMajor(textOf(el, "major"));
+            s.setCollege(textOf(el, "college"));
+            students.add(s);
+        }
+        return students;
+    }
+
+    private List<Selection> parseSelectionListResponse(String xml) {
+        List<Selection> selections = new ArrayList<>();
+        if (xml == null || xml.isEmpty()) {
+            return selections;
+        }
+        Document doc = Dom4jXmlService.parse(xml);
+        Element root = doc.getRootElement();
+        Element selectionsEl = root.element("selections");
+        if (selectionsEl == null) {
+            return selections;
+        }
+        @SuppressWarnings("unchecked")
+        List<Element> selectionElements = selectionsEl.elements("selection");
+        for (Element el : selectionElements) {
+            Selection s = new Selection();
+            s.setStudentId(textOf(el, "studentId"));
+            s.setCourseId(textOf(el, "courseId"));
+            s.setOwnerCollege(textOf(el, "college"));
+            String scoreStr = textOf(el, "score");
+            s.setScore(scoreStr.isEmpty() ? null : Integer.parseInt(scoreStr));
+            selections.add(s);
+        }
+        return selections;
     }
 
     private String textOf(Element parent, String tag) {

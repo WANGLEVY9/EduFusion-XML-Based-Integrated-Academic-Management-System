@@ -16,6 +16,8 @@ import com.sun.net.httpserver.HttpServer;
 
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import edu.fusion.common.service.CollegeGateway;
 import edu.fusion.common.util.AuditLogger;
 import edu.fusion.common.util.Dom4jXmlService;
@@ -146,6 +148,16 @@ public class CollegeXmlHttpServer {
                 }
                 return buildTopCoursesXml(gateway.topCourses(topN));
             }
+            case "listAllStudents": {
+                List<Student> allStudents = gateway.listAllStudents();
+                AuditLogger.log("listAllStudents", gateway.getCollegeCode(), "college=" + gateway.getCollegeCode(), true, "List all students");
+                return buildStudentListXml(allStudents);
+            }
+            case "listAllSelections": {
+                List<Selection> allSelections = gateway.listAllSelections();
+                AuditLogger.log("listAllSelections", gateway.getCollegeCode(), "college=" + gateway.getCollegeCode(), true, "List all selections");
+                return buildSelectionListXml(allSelections);
+            }
             default:
                 return buildErrorXml("Unsupported request type: " + type);
         }
@@ -198,6 +210,39 @@ public class CollegeXmlHttpServer {
             Dom4jXmlService.addTextElement(c, "name", h.getCourseName());
             Dom4jXmlService.addTextElement(c, "college", h.getCollege());
             Dom4jXmlService.addTextElement(c, "selectedCount", String.valueOf(h.getSelectedCount()));
+        }
+        return Dom4jXmlService.toCompactString(doc);
+    }
+
+    private String buildStudentListXml(List<Student> students) {
+        Document doc = Dom4jXmlService.createDocument("response");
+        Element root = doc.getRootElement();
+        Dom4jXmlService.addTextElement(root, "success", "true");
+        Dom4jXmlService.addTextElement(root, "college", gateway.getCollegeCode());
+        Element studentsEl = root.addElement("students");
+        for (Student s : students) {
+            Element studentEl = studentsEl.addElement("student");
+            Dom4jXmlService.addTextElement(studentEl, "id", s.getId());
+            Dom4jXmlService.addTextElement(studentEl, "name", s.getName());
+            Dom4jXmlService.addTextElement(studentEl, "sex", s.getSex());
+            Dom4jXmlService.addTextElement(studentEl, "major", s.getMajor());
+            Dom4jXmlService.addTextElement(studentEl, "college", s.getCollege());
+        }
+        return Dom4jXmlService.toCompactString(doc);
+    }
+
+    private String buildSelectionListXml(List<Selection> selections) {
+        Document doc = Dom4jXmlService.createDocument("response");
+        Element root = doc.getRootElement();
+        Dom4jXmlService.addTextElement(root, "success", "true");
+        Dom4jXmlService.addTextElement(root, "college", gateway.getCollegeCode());
+        Element selectionsEl = root.addElement("selections");
+        for (Selection s : selections) {
+            Element selectionEl = selectionsEl.addElement("selection");
+            Dom4jXmlService.addTextElement(selectionEl, "studentId", s.getStudentId());
+            Dom4jXmlService.addTextElement(selectionEl, "courseId", s.getCourseId());
+            Dom4jXmlService.addTextElement(selectionEl, "college", s.getOwnerCollege());
+            Dom4jXmlService.addTextElement(selectionEl, "score", s.getScore() == null ? "" : String.valueOf(s.getScore()));
         }
         return Dom4jXmlService.toCompactString(doc);
     }

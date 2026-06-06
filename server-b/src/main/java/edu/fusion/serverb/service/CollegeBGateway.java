@@ -2,6 +2,8 @@ package edu.fusion.serverb.service;
 
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import edu.fusion.common.service.CollegeGateway;
 import edu.fusion.common.service.JdbcCollegeRepository;
 import edu.fusion.common.util.JdbcConfigLoader;
@@ -30,7 +32,10 @@ public class CollegeBGateway implements CollegeGateway {
             "SelectB",
             "sid",
             "cno",
-            "score");
+            "score",
+            "sname",
+            "gender",
+            "major_name");
 
     @Override
     public String getCollegeCode() {
@@ -95,5 +100,15 @@ public class CollegeBGateway implements CollegeGateway {
     @Override
     public List<CourseHeat> topCourses(int topN) {
         return REPOSITORY.topCourses(topN);
+    }
+
+    @Override
+    public List<Student> listAllStudents() {
+        return REPOSITORY.listAllStudents();
+    }
+
+    @Override
+    public List<Selection> listAllSelections() {
+        return REPOSITORY.listAllSelections();
     }
 }

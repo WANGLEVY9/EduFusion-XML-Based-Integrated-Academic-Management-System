@@ -2,6 +2,8 @@ package edu.fusion.common.service;
 
 import edu.fusion.common.model.Course;
 import edu.fusion.common.model.CourseHeat;
+import edu.fusion.common.model.Selection;
+import edu.fusion.common.model.Student;
 import java.util.List;
 
 public interface CollegeGateway {
@@ -31,4 +33,8 @@ public interface CollegeGateway {
     int countSharedCourses();
 
     List<CourseHeat> topCourses(int topN);
+
+    List<Student> listAllStudents();
+
+    List<Selection> listAllSelections();
 }

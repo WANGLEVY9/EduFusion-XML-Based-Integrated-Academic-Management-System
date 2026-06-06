@@ -150,4 +150,12 @@ public class InMemoryCollegeStore {
     public boolean authenticateAdmin(String username, String password) {
         return password != null && password.equals(adminPasswords.get(username));
     }
+
+    public List<Student> listAllStudents() {
+        return new ArrayList<>(students);
+    }
+
+    public List<Selection> listAllSelections() {
+        return new ArrayList<>(selections);
+    }
 }
