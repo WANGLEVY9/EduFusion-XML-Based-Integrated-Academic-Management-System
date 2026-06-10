@@ -132,7 +132,29 @@
       "Bash(mysql --version)",
       "Bash(python generate_hw4_data.py)",
       "Bash(mysql *)",
-      "Bash(bash \"C:/Users/22166/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/start-server.sh\" --project-dir \"E:/Codes/2026/2026-DataIntegration/EduFusion-XML-Based-Integrated-Academic-Management-System\")"
+      "Bash(bash \"C:/Users/22166/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/start-server.sh\" --project-dir \"E:/Codes/2026/2026-DataIntegration/EduFusion-XML-Based-Integrated-Academic-Management-System\")",
+      "Bash(awk -F',' '{print $7}' source/student.csv)",
+      "Bash(awk -F',' '{print $9}' source/course.csv)",
+      "Bash(awk -F',' '{print $4}' source/sc.csv)",
+      "Bash(awk -F',' '{print $5}' source/sc.csv)",
+      "Bash(awk -F',' '$7==\"2\" {count++} END {print \"Group 2 students:\", count+0}' source/student.csv)",
+      "Bash(awk -F',' '$9==\"2\" {count++} END {print \"Group 2 courses:\", count+0}' source/course.csv)",
+      "Bash(awk -F',' '$4==\"2\" {count++} END {print \"Group 2 sc entries:\", count+0}' source/sc.csv)",
+      "Bash(awk -F',' '$7==\"2\" {print $8}' source/student.csv)",
+      "Bash(awk -F',' '$7==\"2\"' source/student.csv)",
+      "Bash(awk -F',' '{print $1}')",
+      "Bash(awk -F',' '$4==\"2\"' source/sc.csv)",
+      "Bash(awk -F',' '$4==\"2\" && $3==\"\"' source/sc.csv)",
+      "Bash(awk -F',' '{print $8}')",
+      "Bash(awk -F',' '$4==\"2\" && $5==\"A\" {count++} END {print \"Group 2, Dept A sc:\", count+0}' source/sc.csv)",
+      "Bash(awk -F',' '$4==\"2\" && $5==\"B\" {count++} END {print \"Group 2, Dept B sc:\", count+0}' source/sc.csv)",
+      "Bash(awk -F',' '$4==\"2\" && $5==\"C\" {count++} END {print \"Group 2, Dept C sc:\", count+0}' source/sc.csv)",
+      "Bash(awk -F',' '$7==\"10\"' source/student.csv)",
+      "Bash(awk -F',' '$4==\"10\" && $5==\"A\" {count++; sum+=$3} END {print \"Group 10, A: count=\"count, \"avg score=\"\\(count>0?int\\(sum/count\\):\"N/A\"\\)}' source/sc.csv)",
+      "Bash(awk -F',' '$4==\"10\" && $5==\"B\" {count++; sum+=$3} END {print \"Group 10, B: count=\"count, \"avg score=\"\\(count>0?int\\(sum/count\\):\"N/A\"\\)}' source/sc.csv)",
+      "Bash(awk -F',' '$4==\"10\" && $5==\"C\" {count++; sum+=$3} END {print \"Group 10, C: count=\"count, \"avg score=\"\\(count>0?int\\(sum/count\\):\"N/A\"\\)}' source/sc.csv)",
+      "Bash(pip list *)",
+      "Bash(python generate_hw4_group2_full.py)"
     ]
   }
 }
